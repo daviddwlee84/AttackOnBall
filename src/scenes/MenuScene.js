@@ -10,6 +10,13 @@ export default class MenuScene extends Phaser.Scene {
   }
 
   create() {
+    // Textures are ready and the menu is up — fade out the HTML loading screen.
+    const loader = document.getElementById('aob-loading');
+    if (loader) {
+      loader.classList.add('aob-fade');
+      setTimeout(() => loader.remove(), 400);
+    }
+
     const p = PALETTES[0];
     this.add.rectangle(0, 0, GAME_W, GAME_H, p.bg).setOrigin(0);
     this.add.image(0, 0, 'grid').setOrigin(0).setTint(p.grid).setAlpha(0.7);

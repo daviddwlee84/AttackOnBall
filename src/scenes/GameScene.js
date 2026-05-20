@@ -55,6 +55,11 @@ export default class GameScene extends Phaser.Scene {
     this.keyA = this.input.keyboard.addKey('A');
     this.keyD = this.input.keyboard.addKey('D');
 
+    // Pause: Esc / P keys, or the corner button.
+    this.input.keyboard.on('keydown-ESC', this.pauseGame, this);
+    this.input.keyboard.on('keydown-P', this.pauseGame, this);
+    this.makePauseButton();
+
     // Test hook (used by scripts/smoke-test.mjs) — harmless in normal play.
     if (typeof window !== 'undefined') window.__aob = this;
   }
@@ -64,10 +69,35 @@ export default class GameScene extends Phaser.Scene {
     if (this.cursors.right.isDown || this.keyD.isDown) return 1;
     const p = this.input.activePointer;
     if (p.isDown) {
+      // Ignore taps in the top-right pause-button corner so they don't also move.
+      if (p.worldX > GAME_W - 90 * SCALE && p.worldY < 90 * SCALE) return 0;
       const dx = p.worldX - this.player.x;
       if (Math.abs(dx) > 6 * SCALE) return Math.sign(dx);
     }
     return 0;
+  }
+
+  // Small unobtrusive pause button tucked in the top-right corner.
+  makePauseButton() {
+    const size = 40 * SCALE;
+    const x = GAME_W - size * 0.5 - 16 * SCALE;
+    const y = size * 0.5 + 16 * SCALE;
+    const bg = this.add.rectangle(0, 0, size, size, 0xffffff, 0.85).setStrokeStyle(3 * SCALE, 0x2b2b2b);
+    const barW = 6 * SCALE;
+    const barH = 18 * SCALE;
+    const b1 = this.add.rectangle(-5 * SCALE, 0, barW, barH, 0x2b2b2b);
+    const b2 = this.add.rectangle(5 * SCALE, 0, barW, barH, 0x2b2b2b);
+    this.add.container(x, y, [bg, b1, b2]).setDepth(80);
+    // Make the background rectangle interactive (container-level hitAreas don't
+    // hit-test reliably in Phaser).
+    bg.setInteractive({ useHandCursor: true });
+    bg.on('pointerdown', () => this.pauseGame());
+  }
+
+  pauseGame() {
+    if (this.over || this.scene.isPaused()) return;
+    this.scene.launch('PauseScene');
+    this.scene.pause();
   }
 
   update(_time, dtMs) {

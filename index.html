@@ -32,10 +32,55 @@
       canvas {
         touch-action: none;
       }
+
+      /* Loading screen shown immediately while the bundle downloads and the
+         doodle textures are generated; removed once the menu is ready. */
+      #aob-loading {
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        background: #fdf6e3;
+        color: #2b2b2b;
+        transition: opacity 0.35s ease;
+      }
+      #aob-loading.aob-fade {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #aob-loading .ball {
+        width: 56px;
+        height: 56px;
+        border: 5px solid #2b2b2b;
+        border-radius: 50%;
+        background: #9ad42b;
+        animation: aob-bounce 0.6s cubic-bezier(0.5, 0.05, 0.5, 1) infinite alternate;
+      }
+      #aob-loading .label {
+        font-size: 26px;
+        font-weight: bold;
+        letter-spacing: 1px;
+      }
+      @keyframes aob-bounce {
+        from {
+          transform: translateY(-26px) scaleY(1.05);
+        }
+        to {
+          transform: translateY(26px) scaleX(1.12) scaleY(0.88);
+        }
+      }
     </style>
   </head>
   <body>
     <div id="game"></div>
+    <div id="aob-loading">
+      <div class="ball"></div>
+      <div class="label">Loading…</div>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
