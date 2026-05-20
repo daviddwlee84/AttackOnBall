@@ -1,19 +1,5 @@
 import * as Phaser from 'phaser';
-import {
-  GAME_W,
-  GROUND_Y,
-  GRAVITY,
-  BALL_BOUNCE,
-  BALL_SIZES,
-  BALL_SPEED_MIN,
-  BALL_SPEED_MAX,
-  BALL_ANGLE_MIN,
-  BALL_ANGLE_MAX,
-  BALL_SPEED_RAMP,
-  BALL_SPEED_RAMP_CAP,
-  MIN_APEX_CLEARANCE,
-  PLAYER_SIZE,
-} from '../config.js';
+import { GAME_W, GROUND_Y, BALL_SIZES, PLAYER_SIZE } from '../config.js';
 import { PAD } from '../doodle.js';
 
 // A bouncing ball. Flies in from one side with a random speed + angle, arcs
@@ -44,22 +30,27 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
   // the constructor left balls flying in straight lines (no gravity, no bounce).
   // `elapsed` (seconds survived) gently ramps launch speed for rising pressure.
   launch(elapsed = 0) {
-    const ramp = 1 + Math.min(BALL_SPEED_RAMP_CAP, elapsed * BALL_SPEED_RAMP);
-    const speed = Phaser.Math.FloatBetween(BALL_SPEED_MIN, BALL_SPEED_MAX) * ramp;
-    const angle = Phaser.Math.DegToRad(Phaser.Math.FloatBetween(BALL_ANGLE_MIN, BALL_ANGLE_MAX));
+    const p = this.scene.params;
+    const ramp = 1 + Math.min(p.speedRampCap, elapsed * p.speedRamp);
+    const speedLo = Math.min(p.ballSpeedMin, p.ballSpeedMax);
+    const speedHi = Math.max(p.ballSpeedMin, p.ballSpeedMax);
+    const speed = Phaser.Math.FloatBetween(speedLo, speedHi) * ramp;
+    const angLo = Math.min(p.angleMin, p.angleMax);
+    const angHi = Math.max(p.angleMin, p.angleMax);
+    const angle = Phaser.Math.DegToRad(Phaser.Math.FloatBetween(angLo, angHi));
     let vx = Math.cos(angle) * speed * this.dir;
     let vy = -Math.sin(angle) * speed;
 
     // Playability guarantee: the bounce apex (vy^2 / 2g above the floor) must
     // clear the hero's head plus a margin, or the ball would be undodgeable.
-    const minApex = PLAYER_SIZE + this.radius + MIN_APEX_CLEARANCE;
-    const minVy = Math.sqrt(2 * GRAVITY * minApex);
+    const minApex = PLAYER_SIZE + this.radius + p.minApexClearance;
+    const minVy = Math.sqrt(2 * p.gravity * minApex);
     if (-vy < minVy) vy = -minVy;
 
     this.body.setCircle(this.radius, PAD, PAD);
     this.body.setAllowGravity(true);
-    this.body.setGravityY(GRAVITY);
-    this.setBounce(0, BALL_BOUNCE);
+    this.body.setGravityY(p.gravity);
+    this.setBounce(0, p.ballBounce);
     this.setVelocity(vx, vy);
     this.setAngularVelocity(this.dir * Phaser.Math.Between(60, 200));
     return this;

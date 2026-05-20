@@ -35,10 +35,11 @@ await page.goto(URL, { waitUntil: 'networkidle0', timeout: 20000 });
 
 // Wait for Phaser to create its canvas, then verify it actually rendered.
 await page.waitForSelector('canvas', { timeout: 10000 });
-await new Promise((r) => setTimeout(r, 1500)); // BootScene -> MenuScene
+await new Promise((r) => setTimeout(r, 1500)); // BootScene -> MenuScene + settings panel
 
-// Start a game (Space), drive movement + a pointer hold, run a few seconds.
-await page.keyboard.press('Space');
+// Start a game via the settings panel's Play button, then drive movement.
+await page.waitForSelector('.aob-play', { timeout: 8000 });
+await page.click('.aob-play');
 await new Promise((r) => setTimeout(r, 500));
 await page.keyboard.down('ArrowRight');
 await new Promise((r) => setTimeout(r, 1500));

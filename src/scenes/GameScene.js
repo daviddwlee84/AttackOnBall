@@ -11,6 +11,7 @@ import {
 import Player from '../objects/Player.js';
 import Arena from '../systems/arena.js';
 import Spawner from '../systems/spawner.js';
+import { gameParams } from '../settings.js';
 
 // The core gameplay loop: move the hero, dodge the bouncing balls, grab numbers,
 // and survive. Score climbs with time; every 10 points the arena recolors.
@@ -20,6 +21,10 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // Snapshot the active settings (SCALE-applied) for this run. Read before any
+    // entity is created — Player/Ball/Spawner all read scene.params.
+    this.params = gameParams();
+
     this.elapsed = 0;
     this.collected = 0;
     this.score = 0;

@@ -1,18 +1,7 @@
 import * as Phaser from 'phaser';
 import Ball from '../objects/Ball.js';
 import NumberPickup from '../objects/NumberPickup.js';
-import {
-  BALL_SIZES,
-  BALL_COLORS,
-  BALL_SPAWN_START,
-  BALL_SPAWN_MIN,
-  BALL_SPAWN_RAMP,
-  DOUBLE_SPAWN_AFTER,
-  TRIPLE_SPAWN_AFTER,
-  DENSITY_RAMP,
-  PICKUP_INTERVAL,
-  PICKUP_VALUES,
-} from '../config.js';
+import { BALL_SIZES, BALL_COLORS, PICKUP_INTERVAL, PICKUP_VALUES } from '../config.js';
 
 // Drives difficulty: ball spawn interval shrinks the longer you survive, and
 // extra simultaneous balls ramp in over time so on-screen density keeps rising.
@@ -26,14 +15,15 @@ export default class Spawner {
   }
 
   update(dt, elapsed) {
-    const interval = Math.max(BALL_SPAWN_MIN, BALL_SPAWN_START - elapsed * BALL_SPAWN_RAMP);
+    const p = this.scene.params;
+    const interval = Math.max(p.spawnMin, p.spawnStart - elapsed * p.spawnRamp);
     this.ballAcc += dt;
     if (this.ballAcc >= interval) {
       this.ballAcc = 0;
       // Always one ball; chance of a 2nd/3rd grows with time for rising density.
       let count = 1;
-      if (elapsed > DOUBLE_SPAWN_AFTER && Math.random() < (elapsed - DOUBLE_SPAWN_AFTER) / DENSITY_RAMP) count++;
-      if (elapsed > TRIPLE_SPAWN_AFTER && Math.random() < (elapsed - TRIPLE_SPAWN_AFTER) / DENSITY_RAMP) count++;
+      if (elapsed > p.doubleAfter && Math.random() < (elapsed - p.doubleAfter) / p.densityRamp) count++;
+      if (elapsed > p.tripleAfter && Math.random() < (elapsed - p.tripleAfter) / p.densityRamp) count++;
       for (let i = 0; i < count; i++) this.spawnBall(elapsed);
     }
 

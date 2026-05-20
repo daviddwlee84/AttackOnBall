@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { GAME_W, GRAVITY, SCALE } from '../config.js';
+import { GAME_W, SCALE } from '../config.js';
 
 // A falling number the player walks over to add straight to their score.
 export default class NumberPickup extends Phaser.Physics.Arcade.Sprite {
@@ -17,7 +17,7 @@ export default class NumberPickup extends Phaser.Physics.Arcade.Sprite {
   configure() {
     this.body.setCircle(20 * SCALE, 4 * SCALE, 4 * SCALE);
     this.body.setAllowGravity(true);
-    this.body.setGravityY(GRAVITY * 0.35); // floats down gently
+    this.body.setGravityY(this.scene.params.gravity * 0.35); // floats down gently
     this.setBounce(0, 0.3);
 
     // Fade out if left uncollected so the floor doesn't clutter with numbers.

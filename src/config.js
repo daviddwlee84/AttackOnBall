@@ -13,45 +13,17 @@ export const GAME_H = 540 * SCALE;
 export const GROUND_H = 64 * SCALE; // thickness of the water strip
 export const GROUND_Y = GAME_H - GROUND_H; // y of the surface line
 
-// --- Physics ---
-export const GRAVITY = 1000 * SCALE; // px/s^2
-// Elastic ground bounce: each ball conserves energy and keeps a stable, lively
-// bounce height (matching the original). A value <1 would let them die out;
-// >1 (or a min-velocity clamp) injects energy and causes runaway bounces.
-export const BALL_BOUNCE = 1;
-
-// --- Player ---
-export const PLAYER_SPEED = 380 * SCALE; // px/s horizontal
+// --- Player (visual size is fixed; movement speed is a runtime setting) ---
 export const PLAYER_SIZE = 56 * SCALE; // hero sprite is square-ish
 
-// --- Ball spawning / difficulty (density rises the longer you survive) ---
-export const BALL_SPAWN_START = 1.6; // seconds between balls at t=0
-export const BALL_SPAWN_MIN = 0.35; // floor on spawn interval
-export const BALL_SPAWN_RAMP = 0.022; // interval reduction per second survived
-// Extra simultaneous balls ramp in over time, increasing on-screen density.
-export const DOUBLE_SPAWN_AFTER = 18; // s before a 2nd ball can spawn at once
-export const TRIPLE_SPAWN_AFTER = 45; // s before a 3rd can
-export const DENSITY_RAMP = 35; // s over which each extra-ball chance reaches 100%
-
+// Ball sizes (fixed). Launch speed/angle, gravity, bounce, spawn rates and the
+// difficulty ramp are all runtime-configurable — see src/settings.js.
 export const BALL_SIZES = [
   { r: 18 * SCALE },
   { r: 26 * SCALE },
   { r: 36 * SCALE },
   { r: 48 * SCALE },
 ];
-
-// --- Ball launch (tunable). Each ball launches with a random speed + angle;
-// the resulting bounce is clamped so it ALWAYS clears the hero's head, keeping
-// the game winnable no matter the random roll. ---
-export const BALL_SPEED_MIN = 560 * SCALE; // px/s total launch speed
-export const BALL_SPEED_MAX = 1000 * SCALE;
-export const BALL_ANGLE_MIN = 40; // degrees above horizontal (lower = flatter/faster across)
-export const BALL_ANGLE_MAX = 78; // higher = steeper / more vertical, lingers longer
-// Launch speed also creeps up with survival time for added pressure.
-export const BALL_SPEED_RAMP = 0.006; // +0.6% max speed per second survived (capped)
-export const BALL_SPEED_RAMP_CAP = 0.6; // up to +60%
-// Playability guarantee: bounce apex must clear the hero's head by this gap.
-export const MIN_APEX_CLEARANCE = 40 * SCALE;
 
 // --- Number pickups ---
 export const PICKUP_INTERVAL = 5; // seconds between drops (with jitter)
