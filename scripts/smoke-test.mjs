@@ -65,7 +65,28 @@ const drew = await page.evaluate(() => {
   return colors.size > 5; // more than a flat fill
 });
 
+// Verify balls actually spawned AND flew into the play field (not stuck at the
+// edges) — guards against the physics-group velocity-reset regression.
+const ballStats = await page.evaluate(() => {
+  const s = window.__aob;
+  if (!s || !s.balls) return null;
+  const balls = s.balls.getChildren();
+  const inField = balls.filter((b) => b.x > 80 && b.x < s.scale.width - 80).length;
+  return { total: balls.length, inField };
+});
+
 await browser.close();
+
+if (!ballStats || ballStats.total === 0) {
+  console.error('SMOKE FAIL — no balls spawned');
+  process.exit(1);
+}
+if (ballStats.inField === 0) {
+  console.error(
+    `SMOKE FAIL — ${ballStats.total} ball(s) spawned but none entered the field (stuck at edges)`
+  );
+  process.exit(1);
+}
 
 if (errors.length) {
   console.error('SMOKE FAIL — browser errors:\n' + errors.join('\n'));
@@ -75,4 +96,7 @@ if (!drew) {
   console.error('SMOKE FAIL — canvas appears blank (nothing rendered)');
   process.exit(1);
 }
-console.log('SMOKE PASS — booted, played ~6s, canvas rendered, no errors.');
+console.log(
+  `SMOKE PASS — booted, played ~6s, canvas rendered, no errors. ` +
+    `Balls: ${ballStats.total} active, ${ballStats.inField} in field.`
+);

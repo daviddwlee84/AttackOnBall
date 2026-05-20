@@ -10,9 +10,15 @@ export default class NumberPickup extends Phaser.Physics.Arcade.Sprite {
     scene.physics.add.existing(this);
 
     this.value = value;
+  }
+
+  // Configure the body — call *after* adding to the physics group (the group
+  // resets body settings, same gotcha as Ball).
+  configure() {
     this.body.setCircle(20, 4, 4);
     this.body.setAllowGravity(true);
     this.body.setGravityY(GRAVITY * 0.35); // floats down gently
     this.setBounce(0, 0.3);
+    return this;
   }
 }

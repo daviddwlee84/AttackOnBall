@@ -4,7 +4,6 @@ import {
   GAME_H,
   GROUND_Y,
   GROUND_H,
-  MIN_BOUNCE_VY,
   SCORE_PER_SECOND,
   SEGMENT,
   BALL_COLORS,
@@ -39,10 +38,8 @@ export default class GameScene extends Phaser.Scene {
     this.pickups = this.physics.add.group();
     this.spawner = new Spawner(this);
 
-    // Balls bounce on the ground; enforce a minimum bounce so they stay lively.
-    this.physics.add.collider(this.balls, this.ground, (ball) => {
-      if (ball.body.velocity.y > -MIN_BOUNCE_VY) ball.body.velocity.y = -MIN_BOUNCE_VY;
-    });
+    // Balls bounce elastically on the ground (energy conserved → stable height).
+    this.physics.add.collider(this.balls, this.ground);
     this.physics.add.collider(this.pickups, this.ground);
 
     this.physics.add.overlap(this.player, this.balls, () => this.die());
@@ -52,6 +49,9 @@ export default class GameScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keyA = this.input.keyboard.addKey('A');
     this.keyD = this.input.keyboard.addKey('D');
+
+    // Test hook (used by scripts/smoke-test.mjs) — harmless in normal play.
+    if (typeof window !== 'undefined') window.__aob = this;
   }
 
   readDirection() {

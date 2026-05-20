@@ -42,11 +42,13 @@ export default class Spawner {
     const colorIdx = Phaser.Math.Between(0, BALL_COLORS.length - 1);
     const ball = new Ball(this.scene, sizeIdx, colorIdx);
     this.scene.balls.add(ball);
+    ball.launch();
   }
 
   spawnPickup() {
     const value = Phaser.Utils.Array.GetRandom(PICKUP_VALUES);
     const pickup = new NumberPickup(this.scene, value);
     this.scene.pickups.add(pickup);
+    pickup.configure();
   }
 }
