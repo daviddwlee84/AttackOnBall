@@ -31,7 +31,9 @@ page.on('response', (r) => {
   }
 });
 
-await page.goto(URL, { waitUntil: 'networkidle0', timeout: 20000 });
+// 'load' rather than 'networkidle0' — the PWA service worker keeps connections
+// active, so networkidle never settles on the deployed site.
+await page.goto(URL, { waitUntil: 'load', timeout: 30000 });
 
 // Wait for Phaser to create its canvas, then verify it actually rendered.
 await page.waitForSelector('canvas', { timeout: 10000 });
@@ -41,6 +43,28 @@ await new Promise((r) => setTimeout(r, 1500)); // BootScene -> MenuScene + setti
 await page.waitForSelector('.aob-play', { timeout: 8000 });
 await page.click('.aob-play');
 await new Promise((r) => setTimeout(r, 500));
+
+// Sample ball counts throughout the run (robust to the player dying mid-test —
+// records the peak rather than reading once at the end).
+await page.evaluate(() => {
+  window.__peakTotal = 0;
+  window.__peakInField = 0;
+  window.__ranGame = false;
+  window.__sampler = setInterval(() => {
+    try {
+      const s = window.__aob;
+      if (!s) return;
+      window.__ranGame = true;
+      if (!s.balls || s.over) return;
+      const balls = s.balls.getChildren();
+      const inF = balls.filter((b) => b.x > 80 && b.x < s.scale.width - 80).length;
+      window.__peakTotal = Math.max(window.__peakTotal, balls.length);
+      window.__peakInField = Math.max(window.__peakInField, inF);
+    } catch {
+      /* scene transitioning */
+    }
+  }, 120);
+});
 await page.keyboard.down('ArrowRight');
 await new Promise((r) => setTimeout(r, 1500));
 await page.keyboard.up('ArrowRight');
@@ -69,16 +93,17 @@ const drew = await page.evaluate(() => {
 // Verify balls actually spawned AND flew into the play field (not stuck at the
 // edges) — guards against the physics-group velocity-reset regression.
 const ballStats = await page.evaluate(() => {
-  const s = window.__aob;
-  if (!s || !s.balls) return null;
-  const balls = s.balls.getChildren();
-  const inField = balls.filter((b) => b.x > 80 && b.x < s.scale.width - 80).length;
-  return { total: balls.length, inField };
+  clearInterval(window.__sampler);
+  return { ran: window.__ranGame, total: window.__peakTotal, inField: window.__peakInField };
 });
 
 await browser.close();
 
-if (!ballStats || ballStats.total === 0) {
+if (!ballStats.ran) {
+  console.error('SMOKE FAIL — game never started');
+  process.exit(1);
+}
+if (ballStats.total === 0) {
   console.error('SMOKE FAIL — no balls spawned');
   process.exit(1);
 }
