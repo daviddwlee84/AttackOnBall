@@ -14,10 +14,17 @@
 
 # production
 /build
+/dist
+dev-dist/
+.vite/
 
 # misc
 .DS_Store
 *.pem
+
+# tooling artifacts
+.claude/
+.specstory/
 
 # debug
 npm-debug.log*

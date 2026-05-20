@@ -1,0 +1,21 @@
+{
+  "name": "attack-on-ball",
+  "version": "0.1.0",
+  "description": "A doodle-style recreation of the classic Attack on Ball arcade game, built with Phaser 4.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "smoke": "node scripts/smoke-test.mjs",
+    "icons": "node scripts/generate-icons.mjs"
+  },
+  "dependencies": {
+    "phaser": "^4.0.0",
+    "roughjs": "^4.6.6"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0",
+    "vite-plugin-pwa": "^0.21.0"
+  }
+}

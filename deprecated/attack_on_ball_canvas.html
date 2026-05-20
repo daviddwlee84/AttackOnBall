@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Attack On Ball – Canvas Mini</title>
+  <style>
+    html,body{margin:0;padding:0;background:#111;color:#fff;font-family:sans-serif;text-align:center}
+    canvas{background:#222;border:1px solid #444;display:block;margin:20px auto}
+    #overlay{position:absolute;top:10px;left:0;width:100%;pointer-events:none;font-size:20px;font-weight:bold}
+  </style>
+</head>
+<body>
+  <div id="overlay">Score <span id="score">0</span></div>
+  <canvas id="game" width="480" height="640"></canvas>
+
+  <script>
+    const canvas  = document.getElementById("game");
+    const ctx     = canvas.getContext("2d");
+    const W = canvas.width, H = canvas.height;
+
+    /* ---- Constants ---- */
+    const GRAVITY        = 420; // px / s^2
+    const MIN_BOUNCE_VY  = 260; // px / s   (must exceed player height)
+
+    /* ---- Controls ---- */
+    const keys = { left:false, right:false };
+    addEventListener("keydown", e=>{
+      if(e.code==="ArrowLeft")  keys.left  = true;
+      if(e.code==="ArrowRight") keys.right = true;
+    });
+    addEventListener("keyup", e=>{
+      if(e.code==="ArrowLeft")  keys.left  = false;
+      if(e.code==="ArrowRight") keys.right = false;
+    });
+
+    /* ---- Entities ---- */
+    class Player {
+      constructor(){
+        this.w = 30; this.h = 40;
+        this.x = W/2 - this.w/2;
+        this.y = H - 60;
+        this.speed = 240;
+      }
+      update(dt){
+        if(keys.left)  this.x -= this.speed * dt;
+        if(keys.right) this.x += this.speed * dt;
+        this.x = Math.max(0, Math.min(W - this.w, this.x));
+      }
+      draw(){ ctx.fillStyle = "#00e676"; ctx.fillRect(this.x, this.y, this.w, this.h); }
+      rect(){ return {x:this.x, y:this.y, w:this.w, h:this.h}; }
+    }
+
+    class Ball {
+      constructor(){
+        this.r  = 15 + Math.random()*20;
+        this.x  = Math.random()<0.5 ? -this.r : W + this.r;
+        this.y  = H - 80;
+        const dir = this.x < 0 ? 1 : -1;
+        this.vx = dir * (80 + Math.random()*100);   // slower horizontal speed
+        this.vy = -(140 + Math.random()*120);       // upward launch
+        this.color = `hsl(${Math.floor(Math.random()*360)},70%,70%)`;
+        this.gone = false;
+      }
+      update(dt){
+        this.vy += GRAVITY * dt;          // gravity (downward +)
+        this.x  += this.vx * dt;
+        this.y  += this.vy * dt;
+        // ground bounce
+        if(this.y + this.r > H - 20){
+          this.y = H - 20 - this.r;
+          this.vy *= -0.82;              // lose some energy and invert
+          if(this.vy > -MIN_BOUNCE_VY)   // ensure bounce high enough
+            this.vy = -MIN_BOUNCE_VY;
+        }
+        // remove once far off‑screen so arena 不塞滿
+        if(this.x + this.r < -60 || this.x - this.r > W + 60){
+          this.gone = true;
+        }
+      }
+      draw(){
+        ctx.fillStyle=this.color;
+        ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.fill();
+      }
+      hit(rect){
+        const dx = Math.max(rect.x, Math.min(this.x, rect.x+rect.w));
+        const dy = Math.max(rect.y, Math.min(this.y, rect.y+rect.h));
+        return Math.hypot(this.x-dx, this.y-dy) < this.r;
+      }
+    }
+
+    /* ---- Game state ---- */
+    const player = new Player();
+    const balls  = [];
+    let last     = performance.now();
+    let elapsed  = 0;          // seconds survived
+    let spawnAcc = 0;          // accumulator for spawn timing
+    let spawnInt = 1.5;        // initial spawn interval (s)
+    let over     = false;
+
+    function step(now){
+      const dt = (now - last)/1000;
+      last = now;
+
+      if(!over){
+        elapsed += dt;
+        document.getElementById("score").textContent = Math.floor(elapsed*10);
+
+        // Difficulty scaling
+        spawnInt = Math.max(0.45, 1.5 - elapsed*0.02);
+        spawnAcc += dt;
+        if(spawnAcc > spawnInt){ balls.push(new Ball()); spawnAcc = 0; }
+
+        player.update(dt);
+        balls.forEach(b=>b.update(dt));
+        // purge off‑screen
+        for(let i=balls.length-1;i>=0;i--) if(balls[i].gone) balls.splice(i,1);
+
+        if(balls.some(b=>b.hit(player.rect()))) over = true;
+      }
+      draw();
+      requestAnimationFrame(step);
+    }
+
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      // ground
+      ctx.fillStyle="#555"; ctx.fillRect(0,H-20,W,20);
+      player.draw();
+      balls.forEach(b=>b.draw());
+      if(over){
+        ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle="#fff";
+        ctx.font="32px sans-serif"; ctx.textAlign="center";
+        ctx.fillText("Game Over", W/2, H/2 - 10);
+        ctx.font="18px sans-serif";
+        ctx.fillText("Refresh to play again", W/2, H/2 + 25);
+      }
+    }
+
+    requestAnimationFrame(step);
+  </script>
+</body>
+</html>
