@@ -1,49 +1,69 @@
+// Render scale. The game is authored at a 960x540 "design" resolution, then
+// every spatial value (positions, sizes, velocities, gravity, fonts) is
+// multiplied by SCALE so the canvas backing buffer is high-resolution and
+// stays crisp on hi-DPI displays. Gameplay/feel is identical at any SCALE
+// because all spatial quantities scale together. Bump to 3 for extra sharpness.
+export const SCALE = 2;
+
 // Logical game size (landscape — wider arena gives the balls room to fly).
-// Phaser Scale.FIT letterboxes this to any screen.
-export const GAME_W = 960;
-export const GAME_H = 540;
+export const GAME_W = 960 * SCALE;
+export const GAME_H = 540 * SCALE;
 
 // Ground: the top edge of the blue "water" strip the hero stands on.
-export const GROUND_H = 64; // thickness of the water strip
+export const GROUND_H = 64 * SCALE; // thickness of the water strip
 export const GROUND_Y = GAME_H - GROUND_H; // y of the surface line
 
-// --- Physics (ported & tuned from deprecated/attack_on_ball_canvas.html) ---
-export const GRAVITY = 1000; // px/s^2
+// --- Physics ---
+export const GRAVITY = 1000 * SCALE; // px/s^2
 // Elastic ground bounce: each ball conserves energy and keeps a stable, lively
 // bounce height (matching the original). A value <1 would let them die out;
 // >1 (or a min-velocity clamp) injects energy and causes runaway bounces.
 export const BALL_BOUNCE = 1;
 
 // --- Player ---
-export const PLAYER_SPEED = 380; // px/s horizontal
-export const PLAYER_SIZE = 56; // hero sprite is square-ish
+export const PLAYER_SPEED = 380 * SCALE; // px/s horizontal
+export const PLAYER_SIZE = 56 * SCALE; // hero sprite is square-ish
 
-// --- Ball spawning / difficulty ---
-export const BALL_SPAWN_START = 1.7; // seconds between balls at t=0
-export const BALL_SPAWN_MIN = 0.5; // floor on spawn interval
-export const BALL_SPAWN_RAMP = 0.02; // interval reduction per second survived
+// --- Ball spawning / difficulty (density rises the longer you survive) ---
+export const BALL_SPAWN_START = 1.6; // seconds between balls at t=0
+export const BALL_SPAWN_MIN = 0.35; // floor on spawn interval
+export const BALL_SPAWN_RAMP = 0.022; // interval reduction per second survived
+// Extra simultaneous balls ramp in over time, increasing on-screen density.
+export const DOUBLE_SPAWN_AFTER = 18; // s before a 2nd ball can spawn at once
+export const TRIPLE_SPAWN_AFTER = 45; // s before a 3rd can
+export const DENSITY_RAMP = 35; // s over which each extra-ball chance reaches 100%
+
 export const BALL_SIZES = [
-  { r: 18, mass: 0.6 },
-  { r: 26, mass: 1.0 },
-  { r: 36, mass: 1.6 },
-  { r: 48, mass: 2.4 },
+  { r: 18 * SCALE },
+  { r: 26 * SCALE },
+  { r: 36 * SCALE },
+  { r: 48 * SCALE },
 ];
-export const BALL_VX_MIN = 140;
-export const BALL_VX_MAX = 300;
-export const BALL_VY_MIN = 360;
-export const BALL_VY_MAX = 660;
+
+// --- Ball launch (tunable). Each ball launches with a random speed + angle;
+// the resulting bounce is clamped so it ALWAYS clears the hero's head, keeping
+// the game winnable no matter the random roll. ---
+export const BALL_SPEED_MIN = 560 * SCALE; // px/s total launch speed
+export const BALL_SPEED_MAX = 1000 * SCALE;
+export const BALL_ANGLE_MIN = 40; // degrees above horizontal (lower = flatter/faster across)
+export const BALL_ANGLE_MAX = 78; // higher = steeper / more vertical, lingers longer
+// Launch speed also creeps up with survival time for added pressure.
+export const BALL_SPEED_RAMP = 0.006; // +0.6% max speed per second survived (capped)
+export const BALL_SPEED_RAMP_CAP = 0.6; // up to +60%
+// Playability guarantee: bounce apex must clear the hero's head by this gap.
+export const MIN_APEX_CLEARANCE = 40 * SCALE;
 
 // --- Number pickups ---
 export const PICKUP_INTERVAL = 5; // seconds between drops (with jitter)
-export const PICKUP_VALUES = [3, 5, 10]; // seconds added straight to the clock
+export const PICKUP_VALUES = [1, 2, 3, 4]; // seconds added straight to the clock
 
 // --- Scoring ---
-// Score *is* the survival time in seconds; pickups add seconds directly.
-export const SCORE_PER_SECOND = 1;
+// Score *is* the survival time in seconds (continuous, one decimal); pickups
+// add seconds directly.
 export const SEGMENT = 10; // every 10 seconds: reset bar + shuffle palette
 
-// Arena palettes cycled every SEGMENT points. Colors are Phaser numeric hex.
-// bg = paper/background, accent = grid line tint, water = ground strip.
+// Arena palettes cycled every SEGMENT seconds. Colors are Phaser numeric hex.
+// bg = paper/background, grid = grid line tint, water = ground strip.
 export const PALETTES = [
   { bg: 0xfdf6e3, grid: 0xd9cba8, water: 0x4cc3e8 },
   { bg: 0xffe9ec, grid: 0xf2b8c0, water: 0x6bd6a0 },

@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { GAME_W, GAME_H, GROUND_Y, GROUND_H, PALETTES } from '../config.js';
+import { GAME_W, GAME_H, GROUND_Y, GROUND_H, PALETTES, SCALE } from '../config.js';
 
 // Tween a value from one packed-hex color to another, calling apply(color) each
 // frame. Used for the smooth arena recolor on every palette change.
@@ -37,24 +37,26 @@ export default class Arena {
       .setOrigin(0, 0)
       .setDepth(-18);
 
-    // Top progress bar (fills across each 10-point segment).
-    const barW = GAME_W - 80;
+    // Top progress bar (fills continuously across each 10-second segment).
+    const margin = 40 * SCALE;
+    const barW = GAME_W - 2 * margin;
     this.barW = barW;
-    scene.add.rectangle(40, 24, barW, 18, 0x000000, 0.12).setOrigin(0, 0.5).setDepth(40);
+    this.barInset = 2 * SCALE;
+    scene.add.rectangle(margin, 24 * SCALE, barW, 18 * SCALE, 0x000000, 0.12).setOrigin(0, 0.5).setDepth(40);
     this.barBg = scene.add
-      .rectangle(40, 24, barW, 18, 0xffffff, 0.6)
+      .rectangle(margin, 24 * SCALE, barW, 18 * SCALE, 0xffffff, 0.6)
       .setOrigin(0, 0.5)
-      .setStrokeStyle(3, 0x2b2b2b)
+      .setStrokeStyle(3 * SCALE, 0x2b2b2b)
       .setDepth(41);
     this.barFill = scene.add
-      .rectangle(42, 24, 0, 12, p.water)
+      .rectangle(margin + this.barInset, 24 * SCALE, 0, 12 * SCALE, p.water)
       .setOrigin(0, 0.5)
       .setDepth(42);
 
     this.scoreText = scene.add
-      .text(GAME_W / 2, 50, '0', {
+      .text(GAME_W / 2, 44 * SCALE, '0.0', {
         fontFamily: '"Comic Sans MS", "Marker Felt", sans-serif',
-        fontSize: '32px',
+        fontSize: `${32 * SCALE}px`,
         color: '#2b2b2b',
         fontStyle: 'bold',
       })
@@ -62,13 +64,13 @@ export default class Arena {
       .setDepth(43);
   }
 
-  // frac: 0..1 progress through the current 10-point segment.
+  // frac: 0..1 progress through the current 10-second segment.
   setBar(frac) {
-    this.barFill.width = Phaser.Math.Clamp(frac, 0, 1) * (this.barW - 4);
+    this.barFill.width = Phaser.Math.Clamp(frac, 0, 1) * (this.barW - 2 * this.barInset);
   }
 
   setScore(score) {
-    this.scoreText.setText(String(score));
+    this.scoreText.setText(score.toFixed(1));
   }
 
   // Cross-fade to the next palette and flash the bar to signal the milestone.

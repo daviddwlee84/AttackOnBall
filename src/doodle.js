@@ -2,9 +2,14 @@
 // Each helper draws into an offscreen <canvas> and registers it as a Phaser
 // texture so sprites can use it like any loaded image. Expressions and colors
 // are just different draws — no external art assets required.
+//
+// Stroke widths, padding and the small fixed-size textures all scale with
+// SCALE so the hand-drawn look stays consistent at the high-res buffer.
 import rough from 'roughjs';
+import { SCALE } from './config.js';
 
-export const PAD = 8; // breathing room so sketchy strokes don't clip the canvas edge
+const S = SCALE;
+export const PAD = 8 * S; // breathing room so sketchy strokes don't clip the edge
 
 function makeCanvas(w, h) {
   const c = document.createElement('canvas');
@@ -37,11 +42,11 @@ export function makeBall(scene, key, radius, fillColor) {
     roughness: 2.2,
     bowing: 1.5,
     stroke: '#2b2b2b',
-    strokeWidth: 3,
+    strokeWidth: 3 * S,
     fill: fillColor,
     fillStyle: 'zigzag',
-    fillWeight: 3,
-    hachureGap: 5,
+    fillWeight: 3 * S,
+    hachureGap: 5 * S,
   });
   register(scene, key, canvas);
 }
@@ -63,23 +68,23 @@ export function makeHero(scene, key, size, color, expression) {
     roughness: 1.8,
     bowing: 1.2,
     stroke: '#2b2b2b',
-    strokeWidth: 3.5,
+    strokeWidth: 3.5 * S,
     fill: color,
     fillStyle: 'zigzag',
-    fillWeight: 3.5,
-    hachureGap: 5,
+    fillWeight: 3.5 * S,
+    hachureGap: 5 * S,
   });
 
   // Stubby arms
-  rc.line(x - 4, y + size * 0.55, x - 12, y + size * 0.45, {
+  rc.line(x - 4 * S, y + size * 0.55, x - 12 * S, y + size * 0.45, {
     roughness: 1.5,
     stroke: '#2b2b2b',
-    strokeWidth: 3,
+    strokeWidth: 3 * S,
   });
-  rc.line(x + size + 4, y + size * 0.55, x + size + 12, y + size * 0.45, {
+  rc.line(x + size + 4 * S, y + size * 0.55, x + size + 12 * S, y + size * 0.45, {
     roughness: 1.5,
     stroke: '#2b2b2b',
-    strokeWidth: 3,
+    strokeWidth: 3 * S,
   });
 
   const cx = x + size / 2;
@@ -90,7 +95,7 @@ export function makeHero(scene, key, size, color, expression) {
 
   ctx.fillStyle = '#2b2b2b';
   ctx.strokeStyle = '#2b2b2b';
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 3 * S;
   ctx.lineCap = 'round';
 
   if (expression === 'dead') {
@@ -120,7 +125,7 @@ export function makeHero(scene, key, size, color, expression) {
   rc.rectangle(mx, my, mw, mh, {
     roughness: 1.6,
     stroke: '#2b2b2b',
-    strokeWidth: 3,
+    strokeWidth: 3 * S,
     fill: '#ffffff',
     fillStyle: 'solid',
   });
@@ -130,14 +135,14 @@ export function makeHero(scene, key, size, color, expression) {
 
 /** Falling collectible: a doodle bubble with a number inside. */
 export function makeNumber(scene, key, value, accent) {
-  const size = 48;
+  const size = 48 * S;
   const canvas = makeCanvas(size, size);
   const rc = rough.canvas(canvas);
   const ctx = canvas.getContext('2d');
   rc.circle(size / 2, size / 2, size - PAD * 2, {
     roughness: 1.8,
     stroke: '#2b2b2b',
-    strokeWidth: 3,
+    strokeWidth: 3 * S,
     fill: accent,
     fillStyle: 'solid',
   });
@@ -145,26 +150,26 @@ export function makeNumber(scene, key, value, accent) {
   ctx.font = `bold ${size * 0.4}px "Comic Sans MS", "Marker Felt", sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(String(value), size / 2, size / 2 + 1);
+  ctx.fillText(String(value), size / 2, size / 2 + 1 * S);
   register(scene, key, canvas);
 }
 
 /** Small shard used for the death particle burst. */
 export function makeFragment(scene, key) {
-  const size = 18;
+  const size = 18 * S;
   const canvas = makeCanvas(size, size);
   const rc = rough.canvas(canvas);
   rc.polygon(
     [
-      [3, 3],
-      [size - 2, 5],
-      [size - 5, size - 3],
-      [4, size - 4],
+      [3 * S, 3 * S],
+      [size - 2 * S, 5 * S],
+      [size - 5 * S, size - 3 * S],
+      [4 * S, size - 4 * S],
     ],
     {
       roughness: 1.5,
       stroke: '#2b2b2b',
-      strokeWidth: 2,
+      strokeWidth: 2 * S,
       fill: '#ffffff',
       fillStyle: 'solid',
     }
@@ -175,10 +180,10 @@ export function makeFragment(scene, key) {
 /**
  * Transparent notebook-grid overlay (drawn once, tinted per palette at runtime).
  */
-export function makeGrid(scene, key, w, h, gap = 40) {
+export function makeGrid(scene, key, w, h, gap = 40 * S) {
   const canvas = makeCanvas(w, h);
   const rc = rough.canvas(canvas);
-  const opts = { roughness: 1.2, bowing: 0.8, stroke: '#ffffff', strokeWidth: 1.5 };
+  const opts = { roughness: 1.2, bowing: 0.8, stroke: '#ffffff', strokeWidth: 1.5 * S };
   for (let x = gap; x < w; x += gap) rc.line(x, 0, x, h, opts);
   for (let y = gap; y < h; y += gap) rc.line(0, y, w, y, opts);
   register(scene, key, canvas);

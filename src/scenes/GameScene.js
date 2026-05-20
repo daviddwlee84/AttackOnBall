@@ -4,8 +4,8 @@ import {
   GAME_H,
   GROUND_Y,
   GROUND_H,
-  SCORE_PER_SECOND,
   SEGMENT,
+  SCALE,
   BALL_COLORS,
 } from '../config.js';
 import Player from '../objects/Player.js';
@@ -60,7 +60,7 @@ export default class GameScene extends Phaser.Scene {
     const p = this.input.activePointer;
     if (p.isDown) {
       const dx = p.worldX - this.player.x;
-      if (Math.abs(dx) > 6) return Math.sign(dx);
+      if (Math.abs(dx) > 6 * SCALE) return Math.sign(dx);
     }
     return 0;
   }
@@ -80,10 +80,11 @@ export default class GameScene extends Phaser.Scene {
     }
     // Catch any pickup that slips past the bottom.
     for (const pickup of [...this.pickups.getChildren()]) {
-      if (pickup.y > GAME_H + 60) pickup.destroy();
+      if (pickup.y > GAME_H + 60 * SCALE) pickup.destroy();
     }
 
-    this.score = Math.floor(this.elapsed * SCORE_PER_SECOND) + this.collected;
+    // Score is the continuous survival time in seconds (+ collected seconds).
+    this.score = this.elapsed + this.collected;
     this.arena.setScore(this.score);
     this.arena.setBar((this.score % SEGMENT) / SEGMENT);
 
@@ -100,7 +101,7 @@ export default class GameScene extends Phaser.Scene {
     const burst = this.add
       .text(pickup.x, pickup.y, `+${pickup.value}`, {
         fontFamily: '"Comic Sans MS", sans-serif',
-        fontSize: '24px',
+        fontSize: `${24 * SCALE}px`,
         color: '#2b2b2b',
         fontStyle: 'bold',
       })
@@ -108,7 +109,7 @@ export default class GameScene extends Phaser.Scene {
       .setDepth(60);
     this.tweens.add({
       targets: burst,
-      y: burst.y - 40,
+      y: burst.y - 40 * SCALE,
       alpha: 0,
       duration: 600,
       onComplete: () => burst.destroy(),
@@ -124,10 +125,10 @@ export default class GameScene extends Phaser.Scene {
     // Explode the hero into doodle shards.
     const colors = BALL_COLORS.map((c) => Phaser.Display.Color.HexStringToColor(c).color);
     const emitter = this.add.particles(this.player.x, this.player.y, 'fragment', {
-      speed: { min: 120, max: 360 },
+      speed: { min: 120 * SCALE, max: 360 * SCALE },
       angle: { min: 0, max: 360 },
       lifespan: 800,
-      gravityY: 600,
+      gravityY: 600 * SCALE,
       scale: { start: 1.2, end: 0.4 },
       rotate: { min: 0, max: 360 },
       tint: colors,

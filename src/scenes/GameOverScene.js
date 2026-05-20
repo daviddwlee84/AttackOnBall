@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { GAME_W, GAME_H, PALETTES } from '../config.js';
+import { GAME_W, GAME_H, SCALE } from '../config.js';
 
 const BEST_KEY = 'aob-best';
 
@@ -23,7 +23,7 @@ export default class GameOverScene extends Phaser.Scene {
     this.add
       .text(GAME_W / 2, GAME_H * 0.3, 'Game Over', {
         fontFamily: '"Comic Sans MS", "Marker Felt", sans-serif',
-        fontSize: '56px',
+        fontSize: `${56 * SCALE}px`,
         color: '#ffffff',
         fontStyle: 'bold',
       })
@@ -31,18 +31,18 @@ export default class GameOverScene extends Phaser.Scene {
       .setDepth(71);
 
     this.add
-      .text(GAME_W / 2, GAME_H * 0.45, `Score: ${this.score}`, {
+      .text(GAME_W / 2, GAME_H * 0.45, `Score: ${this.score.toFixed(1)}`, {
         fontFamily: '"Comic Sans MS", sans-serif',
-        fontSize: '36px',
+        fontSize: `${36 * SCALE}px`,
         color: '#ffffff',
       })
       .setOrigin(0.5)
       .setDepth(71);
 
     this.add
-      .text(GAME_W / 2, GAME_H * 0.53, isNewBest ? 'New best! 🎉' : `Best: ${best}`, {
+      .text(GAME_W / 2, GAME_H * 0.53, isNewBest ? 'New best! 🎉' : `Best: ${best.toFixed(1)}`, {
         fontFamily: '"Comic Sans MS", sans-serif',
-        fontSize: '26px',
+        fontSize: `${26 * SCALE}px`,
         color: '#ffd43b',
       })
       .setOrigin(0.5)
@@ -51,7 +51,7 @@ export default class GameOverScene extends Phaser.Scene {
     const prompt = this.add
       .text(GAME_W / 2, GAME_H * 0.72, 'Tap or press Space\nto play again', {
         fontFamily: '"Comic Sans MS", sans-serif',
-        fontSize: '26px',
+        fontSize: `${26 * SCALE}px`,
         color: '#ffffff',
         align: 'center',
       })

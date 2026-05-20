@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { GAME_W, GAME_H, GROUND_Y, GROUND_H, PALETTES } from '../config.js';
+import { GAME_W, GAME_H, GROUND_Y, GROUND_H, PALETTES, SCALE } from '../config.js';
 
 const BEST_KEY = 'aob-best';
 
@@ -18,7 +18,7 @@ export default class MenuScene extends Phaser.Scene {
     this.add
       .text(GAME_W / 2, GAME_H * 0.26, 'Attack\non Ball', {
         fontFamily: '"Comic Sans MS", "Marker Felt", sans-serif',
-        fontSize: '64px',
+        fontSize: `${64 * SCALE}px`,
         color: '#2b2b2b',
         fontStyle: 'bold',
         align: 'center',
@@ -28,7 +28,7 @@ export default class MenuScene extends Phaser.Scene {
     const hero = this.add.image(GAME_W / 2, GAME_H * 0.55, 'hero-idle');
     this.tweens.add({
       targets: hero,
-      y: hero.y - 14,
+      y: hero.y - 14 * SCALE,
       duration: 600,
       yoyo: true,
       repeat: -1,
@@ -38,9 +38,9 @@ export default class MenuScene extends Phaser.Scene {
     const best = Number(localStorage.getItem(BEST_KEY) || 0);
     if (best > 0) {
       this.add
-        .text(GAME_W / 2, GAME_H * 0.68, `Best: ${best}`, {
+        .text(GAME_W / 2, GAME_H * 0.68, `Best: ${best.toFixed(1)}`, {
           fontFamily: '"Comic Sans MS", sans-serif',
-          fontSize: '24px',
+          fontSize: `${24 * SCALE}px`,
           color: '#2b2b2b',
         })
         .setOrigin(0.5);
@@ -49,7 +49,7 @@ export default class MenuScene extends Phaser.Scene {
     const prompt = this.add
       .text(GAME_W / 2, GAME_H * 0.8, 'Tap or press Space', {
         fontFamily: '"Comic Sans MS", sans-serif',
-        fontSize: '26px',
+        fontSize: `${26 * SCALE}px`,
         color: '#2b2b2b',
         fontStyle: 'bold',
       })

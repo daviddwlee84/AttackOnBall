@@ -7,12 +7,16 @@ import {
   BALL_SPAWN_START,
   BALL_SPAWN_MIN,
   BALL_SPAWN_RAMP,
+  DOUBLE_SPAWN_AFTER,
+  TRIPLE_SPAWN_AFTER,
+  DENSITY_RAMP,
   PICKUP_INTERVAL,
   PICKUP_VALUES,
 } from '../config.js';
 
-// Drives difficulty: ball spawn interval shrinks the longer you survive, while
-// number pickups drop on a slower, jittered timer.
+// Drives difficulty: ball spawn interval shrinks the longer you survive, and
+// extra simultaneous balls ramp in over time so on-screen density keeps rising.
+// Number pickups drop on a slower, jittered timer.
 export default class Spawner {
   constructor(scene) {
     this.scene = scene;
@@ -26,7 +30,11 @@ export default class Spawner {
     this.ballAcc += dt;
     if (this.ballAcc >= interval) {
       this.ballAcc = 0;
-      this.spawnBall();
+      // Always one ball; chance of a 2nd/3rd grows with time for rising density.
+      let count = 1;
+      if (elapsed > DOUBLE_SPAWN_AFTER && Math.random() < (elapsed - DOUBLE_SPAWN_AFTER) / DENSITY_RAMP) count++;
+      if (elapsed > TRIPLE_SPAWN_AFTER && Math.random() < (elapsed - TRIPLE_SPAWN_AFTER) / DENSITY_RAMP) count++;
+      for (let i = 0; i < count; i++) this.spawnBall(elapsed);
     }
 
     this.pickupAcc += dt;
@@ -37,12 +45,12 @@ export default class Spawner {
     }
   }
 
-  spawnBall() {
+  spawnBall(elapsed) {
     const sizeIdx = Phaser.Math.Between(0, BALL_SIZES.length - 1);
     const colorIdx = Phaser.Math.Between(0, BALL_COLORS.length - 1);
     const ball = new Ball(this.scene, sizeIdx, colorIdx);
     this.scene.balls.add(ball);
-    ball.launch();
+    ball.launch(elapsed);
   }
 
   spawnPickup() {
