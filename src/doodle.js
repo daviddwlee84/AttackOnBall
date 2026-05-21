@@ -239,6 +239,36 @@ export function makeNumber(scene, key, value, accent) {
   register(scene, key, canvas);
 }
 
+/** Collectible heart (lives mode): a doodle heart with a dark outline. */
+export function makeHeart(scene, key) {
+  const size = 48 * S;
+  const canvas = makeCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+  const x = size / 2;
+  const top = size * 0.16;
+  const w = size * 0.74;
+  const h = size * 0.66;
+  ctx.beginPath();
+  ctx.moveTo(x, top + h * 0.3);
+  ctx.bezierCurveTo(x, top, x - w / 2, top, x - w / 2, top + h * 0.3);
+  ctx.bezierCurveTo(x - w / 2, top + h * 0.62, x, top + h * 0.82, x, top + h);
+  ctx.bezierCurveTo(x, top + h * 0.82, x + w / 2, top + h * 0.62, x + w / 2, top + h * 0.3);
+  ctx.bezierCurveTo(x + w / 2, top, x, top, x, top + h * 0.3);
+  ctx.closePath();
+  ctx.fillStyle = '#ff5b6b';
+  ctx.fill();
+  ctx.lineWidth = 3.5 * S;
+  ctx.strokeStyle = '#2b2b2b';
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  // little glossy highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.beginPath();
+  ctx.ellipse(x - w * 0.2, top + h * 0.32, w * 0.11, h * 0.09, -0.4, 0, Math.PI * 2);
+  ctx.fill();
+  register(scene, key, canvas);
+}
+
 /** Small shard used for the death particle burst. */
 export function makeFragment(scene, key) {
   const size = 18 * S;

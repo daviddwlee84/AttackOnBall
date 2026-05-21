@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import Ball from '../objects/Ball.js';
 import NumberPickup from '../objects/NumberPickup.js';
+import HeartPickup from '../objects/HeartPickup.js';
 import { BALL_SIZES, BALL_COLORS, PICKUP_INTERVAL, PICKUP_VALUES } from '../config.js';
 
 // Drives difficulty: ball spawn interval shrinks the longer you survive, and
@@ -44,9 +45,17 @@ export default class Spawner {
   }
 
   spawnPickup() {
+    const s = this.scene;
+    // In lives mode, a slice of drops are bonus hearts (only while below the cap).
+    if (s.mode === 'lives' && s.lives < s.maxLives && Math.random() < 0.18) {
+      const heart = new HeartPickup(s);
+      s.pickups.add(heart);
+      heart.configure();
+      return;
+    }
     const value = Phaser.Utils.Array.GetRandom(PICKUP_VALUES);
-    const pickup = new NumberPickup(this.scene, value);
-    this.scene.pickups.add(pickup);
+    const pickup = new NumberPickup(s, value);
+    s.pickups.add(pickup);
     pickup.configure();
   }
 }

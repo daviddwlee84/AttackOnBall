@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_W, GAME_H, PLAYER_SIZE, BALL_SIZES, BALL_COLORS, HERO_COLOR, PICKUP_VALUES } from '../config.js';
-import { makeBall, makeHero, makeNumber, makeFragment, makePuff, makeGrid } from '../doodle.js';
+import { makeBall, makeHero, makeNumber, makeHeart, makeFragment, makePuff, makeGrid } from '../doodle.js';
 
 // Generates every doodle texture once at startup, then hands off to the menu.
 export default class BootScene extends Phaser.Scene {
@@ -34,6 +34,7 @@ export default class BootScene extends Phaser.Scene {
       makeNumber(this, `num-${value}`, value, '#ffd43b');
     }
 
+    makeHeart(this, 'heart-pickup');
     makeFragment(this, 'fragment');
     makePuff(this, 'puff');
     makeGrid(this, 'grid', GAME_W, GAME_H);

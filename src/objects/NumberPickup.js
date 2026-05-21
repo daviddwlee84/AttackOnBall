@@ -10,6 +10,7 @@ export default class NumberPickup extends Phaser.Physics.Arcade.Sprite {
     scene.physics.add.existing(this);
 
     this.value = value;
+    this.kind = 'number';
   }
 
   // Configure the body — call *after* adding to the physics group (the group

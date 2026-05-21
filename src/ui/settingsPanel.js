@@ -190,6 +190,9 @@ function buildOnce() {
   }
   panel.appendChild(modeRow);
   panel.appendChild(makeSlider({ key: 'lives', label: 'Lives (lives mode)', min: 2, max: 5, step: 1 }));
+  const auto = makeToggle('autoRecover', '💗 Auto-recover hearts');
+  auto.classList.add('wide');
+  panel.appendChild(auto);
 
   // Sound section: a compact row of toggles (master / music / gloat) + the two
   // per-channel volume sliders.
@@ -284,6 +287,7 @@ function injectStyle() {
   .aob-toggle:hover{filter:brightness(1.04);} .aob-toggle:active{transform:translateY(2px);}
   .aob-toggle.off{background:#eee;color:#999;border-color:#bbb;}
   .aob-advanced .aob-toggle{width:100%;margin:2px 0 8px;}
+  .aob-toggle.wide{width:100%;margin:2px 0 4px;}
   .aob-adv-toggle,.aob-reset,.aob-play{font-family:inherit;cursor:pointer;border:3px solid #2b2b2b;
     border-radius:12px;background:#fff;font-weight:bold;}
   .aob-adv-toggle{width:100%;padding:11px;margin-top:14px;font-size:15px;}

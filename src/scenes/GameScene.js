@@ -42,6 +42,7 @@ export default class GameScene extends Phaser.Scene {
     this.lives = this.mode === 'lives' ? Phaser.Math.Clamp(this.params.lives | 0, 1, 5) : 1;
     this.maxLives = Math.max(MAX_LIVES, this.lives);
     this.invincible = false;
+    this.heartProgress = 0; // 0..10 toward the next heart (numbers + optional time)
 
     this.arena = new Arena(this);
 
@@ -203,13 +204,15 @@ export default class GameScene extends Phaser.Scene {
     this.arena.setScore(this.score);
     this.arena.setBar((this.score % SEGMENT) / SEGMENT);
 
-    if (this.mode === 'lives') this.updateCharger((this.score % SEGMENT) / SEGMENT);
+    if (this.mode === 'lives') {
+      if (this.params.autoRecover) this.addHeartProgress(dt); // optional ~10s = +1 heart
+      this.updateCharger(Math.min(this.heartProgress / 10, 1));
+    }
 
     const seg = Math.floor(this.score / SEGMENT);
     if (seg > this.segment) {
       this.segment = seg;
       this.arena.nextPalette();
-      if (this.mode === 'lives') this.gainLife(); // every 10 points = +1 heart
     }
   }
 
@@ -229,13 +232,16 @@ export default class GameScene extends Phaser.Scene {
   }
 
   collect(pickup) {
+    // Heart drops give a life outright.
+    if (pickup.kind === 'heart') {
+      if (this.gainLife()) this.heartPopup(pickup.x, pickup.y);
+      pickup.destroy();
+      return;
+    }
     this.collected += pickup.value;
     Sfx.collect();
-    // Small chance a pickup also drops a bonus heart (lives mode).
-    if (this.mode === 'lives' && this.lives < this.maxLives && Math.random() < 0.12) {
-      this.gainLife();
-      this.heartPopup(pickup.x, pickup.y - 30 * SCALE);
-    }
+    // Numbers fill the charging heart (accumulate to 10 = +1 life).
+    if (this.mode === 'lives') this.addHeartProgress(pickup.value);
     // Little pop where the number was grabbed.
     const burst = this.add
       .text(pickup.x, pickup.y, `+${pickup.value}`, {
@@ -300,14 +306,26 @@ export default class GameScene extends Phaser.Scene {
     this.chargerFill.setCrop(0, h * (1 - frac), w, h * frac);
   }
 
-  // Bank a heart (segment fill or lucky pickup), capped, with a pop + chime.
+  // Bank a heart (filled charger or heart drop), capped, with a pop + chime.
   gainLife() {
-    if (this.mode !== 'lives' || this.lives >= this.maxLives) return;
+    if (this.mode !== 'lives' || this.lives >= this.maxLives) return false;
     this.lives += 1;
     this.layoutHearts();
     Sfx.heart();
     const h = this.heartObjs[this.lives - 1];
     this.tweens.add({ targets: h, scale: { from: 1.7, to: 1 }, duration: 320, ease: 'Back.out' });
+    return true;
+  }
+
+  // Feed the charging heart; each full 10 banks a life (carrying the remainder).
+  addHeartProgress(amount) {
+    if (this.mode !== 'lives') return;
+    this.heartProgress += amount;
+    while (this.heartProgress >= 10 && this.lives < this.maxLives) {
+      this.heartProgress -= 10;
+      this.gainLife();
+    }
+    if (this.lives >= this.maxLives) this.heartProgress = 0;
   }
 
   // A ball touched the hero. In lives mode with lives to spare, lose one and
