@@ -40,6 +40,7 @@ const PREF_DEFAULTS = {
   musicVolume: 0.35, // 0..1
   musicOn: true, // background music toggle
   tauntOn: true, // gloating/幸災樂禍 reaction toggle
+  debug: false, // show the FPS / debug overlay
 };
 
 export function defaults() {

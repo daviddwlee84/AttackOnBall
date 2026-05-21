@@ -12,8 +12,9 @@ import {
 import Player from '../objects/Player.js';
 import Arena from '../systems/arena.js';
 import Spawner from '../systems/spawner.js';
-import { gameParams } from '../settings.js';
+import { gameParams, setSettings } from '../settings.js';
 import { Sfx, isMuted, toggleMuted, startMusic, stopMusic } from '../audio.js';
+import DebugOverlay from '../ui/debugOverlay.js';
 
 // The core gameplay loop: move the hero, dodge the bouncing balls, grab numbers,
 // and survive. Score climbs with time; every 10 points the arena recolors.
@@ -83,6 +84,15 @@ export default class GameScene extends Phaser.Scene {
     this.events.on('resume', startMusic);
     this.events.once('shutdown', stopMusic);
 
+    // Debug FPS overlay (F3 toggles; persisted via the `debug` setting).
+    this.debug = new DebugOverlay(this);
+    this.debug.setVisible(!!this.params.debug);
+    this.input.keyboard.on('keydown-F3', () => {
+      const on = !this.debug.visible;
+      this.debug.setVisible(on);
+      setSettings({ debug: on });
+    });
+
     // Test hook (used by scripts/smoke-test.mjs) — harmless in normal play.
     if (typeof window !== 'undefined') window.__aob = this;
   }
@@ -147,6 +157,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update(time, dtMs) {
+    if (this.debug.visible) this.debug.update();
     if (this.over) return;
     const dt = dtMs / 1000;
     this.elapsed += dt;

@@ -186,6 +186,7 @@ function buildOnce() {
     const open = advSection.classList.toggle('aob-hidden');
     advToggle.textContent = open ? '⚙ Advanced settings' : '⚙ Advanced settings ▴';
   });
+  advSection.appendChild(makeToggle('debug', '🐞 Show FPS'));
   for (const spec of ADVANCED) advSection.appendChild(makeSlider(spec));
   const reset = el('button', 'aob-reset', '↺ Reset to defaults');
   reset.addEventListener('click', () => {
@@ -249,6 +250,7 @@ function injectStyle() {
     background:#fff;padding:9px 0;font-size:14px;font-weight:bold;transition:transform .05s;}
   .aob-toggle:hover{filter:brightness(1.04);} .aob-toggle:active{transform:translateY(2px);}
   .aob-toggle.off{background:#eee;color:#999;border-color:#bbb;}
+  .aob-advanced .aob-toggle{width:100%;margin:2px 0 8px;}
   .aob-adv-toggle,.aob-reset,.aob-play{font-family:inherit;cursor:pointer;border:3px solid #2b2b2b;
     border-radius:12px;background:#fff;font-weight:bold;}
   .aob-adv-toggle{width:100%;padding:11px;margin-top:14px;font-size:15px;}
