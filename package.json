@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "smoke": "node scripts/smoke-test.mjs",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "og": "node scripts/generate-og.mjs"
   },
   "dependencies": {
     "phaser": "^4.0.0",

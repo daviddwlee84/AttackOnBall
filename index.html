@@ -10,6 +10,36 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <title>Attack on Ball</title>
+    <meta
+      name="description"
+      content="Dodge the bouncing balls as long as you can! A doodle-style arcade game you can play right in your browser."
+    />
+
+    <!-- iOS / installed standalone appearance -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Attack on Ball" />
+
+    <!-- Open Graph (absolute URLs required by social scrapers) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Attack on Ball" />
+    <meta property="og:title" content="Attack on Ball" />
+    <meta
+      property="og:description"
+      content="Dodge the bouncing balls as long as you can! A doodle-style arcade game in your browser."
+    />
+    <meta property="og:url" content="https://daviddwlee84.github.io/AttackOnBall/" />
+    <meta property="og:image" content="https://daviddwlee84.github.io/AttackOnBall/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="675" />
+    <meta property="og:image:alt" content="Attack on Ball — doodle-style arcade game" />
+
+    <!-- Twitter card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Attack on Ball" />
+    <meta name="twitter:description" content="Dodge the bouncing balls as long as you can!" />
+    <meta name="twitter:image" content="https://daviddwlee84.github.io/AttackOnBall/og-image.png" />
     <style>
       html,
       body {
@@ -20,6 +50,11 @@
         overflow: hidden;
         overscroll-behavior: none;
         touch-action: none;
+        /* Suppress the iOS long-press "Copy | Translate" callout / text selection
+           that interrupts play. */
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
         font-family: 'Comic Sans MS', 'Marker Felt', sans-serif;
       }
       #game {
@@ -31,6 +66,99 @@
       }
       canvas {
         touch-action: none;
+        -webkit-touch-callout: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      /* Rotate-to-landscape prompt: only shown on portrait touch devices
+         (gated by `pointer: coarse` so a narrow desktop window never triggers it). */
+      #aob-rotate {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 30;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 26px;
+        background: #fdf6e3;
+        color: #2b2b2b;
+        text-align: center;
+      }
+      #aob-rotate .phone {
+        width: 64px;
+        height: 110px;
+        border: 5px solid #2b2b2b;
+        border-radius: 14px;
+        background: #9ad42b;
+        animation: aob-rotate-spin 1.6s ease-in-out infinite;
+      }
+      #aob-rotate .label {
+        font-size: 24px;
+        font-weight: bold;
+        line-height: 1.4;
+        letter-spacing: 0.5px;
+      }
+      @keyframes aob-rotate-spin {
+        0%,
+        30% {
+          transform: rotate(0deg);
+        }
+        70%,
+        100% {
+          transform: rotate(90deg);
+        }
+      }
+      @media (orientation: portrait) and (pointer: coarse) {
+        #aob-rotate {
+          display: flex;
+        }
+      }
+
+      /* "Add to Home Screen" install banner (toggled by src/pwa-install.js). */
+      #aob-install {
+        display: none;
+        position: fixed;
+        left: 50%;
+        bottom: 16px;
+        transform: translateX(-50%);
+        z-index: 25;
+        max-width: 92vw;
+        padding: 10px 14px;
+        align-items: center;
+        gap: 12px;
+        background: #2b2b2b;
+        color: #fdf6e3;
+        border: 3px solid #fdf6e3;
+        border-radius: 12px;
+        box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
+        font-size: 15px;
+      }
+      #aob-install.aob-show {
+        display: flex;
+      }
+      #aob-install .text {
+        flex: 1;
+        line-height: 1.35;
+      }
+      #aob-install button {
+        font-family: inherit;
+        font-weight: bold;
+        cursor: pointer;
+        border-radius: 8px;
+        border: 2px solid #2b2b2b;
+        padding: 7px 12px;
+      }
+      #aob-install .install-btn {
+        background: #7ed957;
+        color: #14310a;
+      }
+      #aob-install .dismiss-btn {
+        background: transparent;
+        color: #fdf6e3;
+        border-color: #fdf6e3;
+        padding: 7px 10px;
       }
 
       /* Loading screen shown immediately while the bundle downloads and the
@@ -80,6 +208,15 @@
     <div id="aob-loading">
       <div class="ball"></div>
       <div class="label">Loading…</div>
+    </div>
+    <div id="aob-rotate" aria-hidden="true">
+      <div class="phone"></div>
+      <div class="label">Rotate your device<br />to landscape&nbsp;↺</div>
+    </div>
+    <div id="aob-install" role="dialog" aria-label="Install Attack on Ball">
+      <span class="text"></span>
+      <button type="button" class="install-btn">Install</button>
+      <button type="button" class="dismiss-btn" aria-label="Dismiss">✕</button>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>

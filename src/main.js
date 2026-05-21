@@ -5,6 +5,9 @@ import MenuScene from './scenes/MenuScene.js';
 import GameScene from './scenes/GameScene.js';
 import PauseScene from './scenes/PauseScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
+import { initInstallPrompt } from './pwa-install.js';
+
+initInstallPrompt();
 
 new Phaser.Game({
   type: Phaser.AUTO,
