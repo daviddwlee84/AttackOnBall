@@ -31,4 +31,7 @@ Main work is a clean serialize/restore of Ball/NumberPickup (their constructors 
 indices, not raw state — would need a `fromSnapshot()` path or a restore method that
 bypasses `launch()`/`configure()`). Moderate effort; well-contained.
 
-**Status:** Not started. Lives mode (shipped) covers the "more forgiving" need for now.
+**Full plan:** see [docs/rewind-mode-plan.md](docs/rewind-mode-plan.md).
+
+**Status:** Not started. Lives mode (shipped, now with a heart economy) covers the
+"more forgiving" need for now.

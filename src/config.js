@@ -59,5 +59,7 @@ export const BALL_COLORS = [
 
 export const HERO_COLOR = '#9ad42b';
 
-// Lives mode: how long the hero is invincible (and blinking) after respawning.
+// Lives mode: how long the hero is invincible (and blinking) after respawning,
+// and the cap on hearts you can bank (from segment fills + lucky pickups).
 export const INVINCIBLE_MS = 1800;
+export const MAX_LIVES = 6;

@@ -9,6 +9,7 @@ import {
   BALL_COLORS,
   PLAYER_SIZE,
   INVINCIBLE_MS,
+  MAX_LIVES,
 } from '../config.js';
 import Player from '../objects/Player.js';
 import Arena from '../systems/arena.js';
@@ -39,6 +40,7 @@ export default class GameScene extends Phaser.Scene {
     // costs a life and grants brief invincibility while the balls keep flying.
     this.mode = this.params.mode === 'lives' ? 'lives' : 'classic';
     this.lives = this.mode === 'lives' ? Phaser.Math.Clamp(this.params.lives | 0, 1, 5) : 1;
+    this.maxLives = Math.max(MAX_LIVES, this.lives);
     this.invincible = false;
 
     this.arena = new Arena(this);
@@ -201,10 +203,13 @@ export default class GameScene extends Phaser.Scene {
     this.arena.setScore(this.score);
     this.arena.setBar((this.score % SEGMENT) / SEGMENT);
 
+    if (this.mode === 'lives') this.updateCharger((this.score % SEGMENT) / SEGMENT);
+
     const seg = Math.floor(this.score / SEGMENT);
     if (seg > this.segment) {
       this.segment = seg;
       this.arena.nextPalette();
+      if (this.mode === 'lives') this.gainLife(); // every 10 points = +1 heart
     }
   }
 
@@ -214,9 +219,23 @@ export default class GameScene extends Phaser.Scene {
     this.dust.emitParticleAt(x, GROUND_Y, n);
   }
 
+  // A floating "+♥" where a bonus heart was won.
+  heartPopup(x, y) {
+    const t = this.add
+      .text(x, y, '+♥', { fontFamily: 'sans-serif', fontSize: `${26 * SCALE}px`, color: '#ff5b6b', fontStyle: 'bold' })
+      .setOrigin(0.5)
+      .setDepth(61);
+    this.tweens.add({ targets: t, y: y - 44 * SCALE, alpha: 0, duration: 700, onComplete: () => t.destroy() });
+  }
+
   collect(pickup) {
     this.collected += pickup.value;
     Sfx.collect();
+    // Small chance a pickup also drops a bonus heart (lives mode).
+    if (this.mode === 'lives' && this.lives < this.maxLives && Math.random() < 0.12) {
+      this.gainLife();
+      this.heartPopup(pickup.x, pickup.y - 30 * SCALE);
+    }
     // Little pop where the number was grabbed.
     const burst = this.add
       .text(pickup.x, pickup.y, `+${pickup.value}`, {
@@ -237,28 +256,58 @@ export default class GameScene extends Phaser.Scene {
     pickup.destroy();
   }
 
-  // Row of hearts under the score (lives mode only).
+  // Row of hearts under the score (lives mode only): full hearts for current
+  // lives plus a "charging" heart that fills bottom-up with segment progress.
   makeLivesHud() {
     if (this.mode !== 'lives') return;
-    this.hearts = [];
+    const font = { fontFamily: 'sans-serif', fontSize: `${30 * SCALE}px`, color: '#ff5b6b' };
+    this.heartObjs = [];
+    for (let i = 0; i < this.maxLives; i++) {
+      this.heartObjs.push(this.add.text(0, 0, '♥', font).setOrigin(0.5).setDepth(44).setVisible(false));
+    }
+    // Faint outline behind + a red heart cropped to the fill fraction in front.
+    this.chargerBg = this.add.text(0, 0, '♥', { ...font, color: '#e6dcc6' }).setOrigin(0.5).setDepth(44).setVisible(false);
+    this.chargerFill = this.add.text(0, 0, '♥', font).setOrigin(0.5).setDepth(45).setVisible(false);
+    this.layoutHearts();
+  }
+
+  // Position/visibility of the heart row (recomputed whenever lives change).
+  layoutHearts() {
+    if (this.mode !== 'lives') return;
     const gap = 34 * SCALE;
-    const startX = GAME_W / 2 - ((this.lives - 1) * gap) / 2;
-    for (let i = 0; i < this.lives; i++) {
-      const h = this.add
-        .text(startX + i * gap, 96 * SCALE, '♥', { fontFamily: 'sans-serif', fontSize: `${30 * SCALE}px`, color: '#ff5b6b' })
-        .setOrigin(0.5)
-        .setDepth(44);
-      this.hearts.push(h);
+    const y = 96 * SCALE;
+    const charging = this.lives < this.maxLives;
+    const count = this.lives + (charging ? 1 : 0);
+    const startX = GAME_W / 2 - ((count - 1) * gap) / 2;
+    this.heartObjs.forEach((h, i) => {
+      if (i < this.lives) h.setVisible(true).setPosition(startX + i * gap, y);
+      else h.setVisible(false);
+    });
+    this.chargerBg.setVisible(charging);
+    this.chargerFill.setVisible(charging);
+    if (charging) {
+      const cx = startX + this.lives * gap;
+      this.chargerBg.setPosition(cx, y);
+      this.chargerFill.setPosition(cx, y);
     }
   }
 
-  updateHearts() {
-    if (!this.hearts) return;
-    this.hearts.forEach((h, i) => {
-      const alive = i < this.lives;
-      h.setText(alive ? '♥' : '♡');
-      h.setColor(alive ? '#ff5b6b' : '#9a8f78');
-    });
+  // frac: 0..1 progress to the next heart — crop the red heart to its bottom slice.
+  updateCharger(frac) {
+    if (this.mode !== 'lives' || !this.chargerFill.visible) return;
+    const w = this.chargerFill.width;
+    const h = this.chargerFill.height;
+    this.chargerFill.setCrop(0, h * (1 - frac), w, h * frac);
+  }
+
+  // Bank a heart (segment fill or lucky pickup), capped, with a pop + chime.
+  gainLife() {
+    if (this.mode !== 'lives' || this.lives >= this.maxLives) return;
+    this.lives += 1;
+    this.layoutHearts();
+    Sfx.heart();
+    const h = this.heartObjs[this.lives - 1];
+    this.tweens.add({ targets: h, scale: { from: 1.7, to: 1 }, duration: 320, ease: 'Back.out' });
   }
 
   // A ball touched the hero. In lives mode with lives to spare, lose one and
@@ -267,7 +316,7 @@ export default class GameScene extends Phaser.Scene {
     if (this.over || this.invincible) return;
     if (this.mode === 'lives' && this.lives > 1) {
       this.lives -= 1;
-      this.updateHearts();
+      this.layoutHearts();
       this.hurt();
     } else {
       this.die();
