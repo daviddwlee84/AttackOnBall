@@ -9,6 +9,10 @@ import { initInstallPrompt } from './pwa-install.js';
 
 initInstallPrompt();
 
+// Ask the browser not to evict our localStorage (best score + settings) under
+// storage pressure. Best-effort — granted based on engagement / install state.
+if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
+
 new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',

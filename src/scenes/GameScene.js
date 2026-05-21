@@ -13,7 +13,7 @@ import Player from '../objects/Player.js';
 import Arena from '../systems/arena.js';
 import Spawner from '../systems/spawner.js';
 import { gameParams } from '../settings.js';
-import { Sfx, isMuted, toggleMuted } from '../audio.js';
+import { Sfx, isMuted, toggleMuted, startMusic, stopMusic } from '../audio.js';
 
 // The core gameplay loop: move the hero, dodge the bouncing balls, grab numbers,
 // and survive. Score climbs with time; every 10 points the arena recolors.
@@ -76,6 +76,13 @@ export default class GameScene extends Phaser.Scene {
     this.makePauseButton();
     this.makeMuteButton();
 
+    // Background music plays only during a live game; stop it when the scene is
+    // paused, restart on resume, and stop on teardown (death / restart).
+    startMusic();
+    this.events.on('pause', stopMusic);
+    this.events.on('resume', startMusic);
+    this.events.once('shutdown', stopMusic);
+
     // Test hook (used by scripts/smoke-test.mjs) — harmless in normal play.
     if (typeof window !== 'undefined') window.__aob = this;
   }
@@ -124,7 +131,12 @@ export default class GameScene extends Phaser.Scene {
     bg.on('pointerdown', () => {
       const muted = toggleMuted();
       icon.setText(muted ? '🔇' : '🔊');
-      if (!muted) Sfx.ui(); // little blip to confirm sound is back
+      if (muted) {
+        stopMusic();
+      } else {
+        Sfx.ui(); // little blip to confirm sound is back
+        startMusic();
+      }
     });
   }
 
@@ -208,6 +220,7 @@ export default class GameScene extends Phaser.Scene {
   die() {
     if (this.over) return;
     this.over = true;
+    stopMusic();
     Sfx.death();
     this.player.die();
 

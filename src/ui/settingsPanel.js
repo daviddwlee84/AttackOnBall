@@ -57,6 +57,29 @@ function fmt(v, step) {
   return Number(v).toFixed(decimals);
 }
 
+// Display value: percent for 0..1 volume sliders, raw otherwise.
+function fmtVal(spec, v) {
+  return spec.pct ? `${Math.round(v * 100)}%` : fmt(v, spec.step);
+}
+
+// Generic compact On/Off toggle button bound to a boolean setting.
+const toggleSyncers = [];
+function makeToggle(key, label) {
+  const btn = el('button', 'aob-toggle', '');
+  const sync = () => {
+    const on = getSettings()[key];
+    btn.textContent = `${label} ${on ? 'On' : 'Off'}`;
+    btn.classList.toggle('off', !on);
+  };
+  btn.addEventListener('click', () => {
+    setSettings({ [key]: !getSettings()[key] });
+    sync();
+  });
+  toggleSyncers.push(sync);
+  sync();
+  return btn;
+}
+
 function makeSlider(spec) {
   const row = el('label', 'aob-row');
   const top = el('div', 'aob-row-top');
@@ -74,7 +97,7 @@ function makeSlider(spec) {
     const patch = { [spec.key]: v };
     if (PRESET_KEYS.includes(spec.key)) patch.difficulty = 'custom';
     setSettings(patch);
-    valSpan.textContent = fmt(v, spec.step);
+    valSpan.textContent = fmtVal(spec, v);
     refreshPresetHighlight();
   });
 
@@ -89,16 +112,19 @@ function refresh() {
   for (const k in controls) {
     const { input, valSpan, spec } = controls[k];
     input.value = s[k];
-    valSpan.textContent = fmt(s[k], spec.step);
+    valSpan.textContent = fmtVal(spec, s[k]);
   }
   const best = Number(localStorage.getItem(BEST_KEY) || 0);
   bestLabel.textContent = best > 0 ? `Best: ${best.toFixed(1)}s` : '';
   syncSound();
+  toggleSyncers.forEach((f) => f());
   refreshPresetHighlight();
 }
 
 function syncSound() {
-  if (soundBtn) soundBtn.textContent = isMuted() ? '🔇 Sound: Off' : '🔊 Sound: On';
+  if (!soundBtn) return;
+  soundBtn.textContent = isMuted() ? '🔇 Off' : '🔊 On';
+  soundBtn.classList.toggle('off', isMuted());
 }
 
 function refreshPresetHighlight() {
@@ -137,6 +163,23 @@ function buildOnce() {
 
   for (const spec of COMMON) panel.appendChild(makeSlider(spec));
 
+  // Sound section: a compact row of toggles (master / music / gloat) + the two
+  // per-channel volume sliders.
+  panel.appendChild(el('div', 'aob-section', 'Sound'));
+  const toggleRow = el('div', 'aob-toggles');
+  soundBtn = el('button', 'aob-toggle', '');
+  soundBtn.addEventListener('click', () => {
+    setMuted(!isMuted());
+    syncSound();
+  });
+  toggleRow.appendChild(soundBtn);
+  toggleRow.appendChild(makeToggle('musicOn', '🎵'));
+  toggleRow.appendChild(makeToggle('tauntOn', '😜'));
+  panel.appendChild(toggleRow);
+  syncSound();
+  panel.appendChild(makeSlider({ key: 'sfxVolume', label: 'SFX volume', min: 0, max: 1, step: 0.05, pct: true }));
+  panel.appendChild(makeSlider({ key: 'musicVolume', label: 'Music volume', min: 0, max: 1, step: 0.05, pct: true }));
+
   const advToggle = el('button', 'aob-adv-toggle', '⚙ Advanced settings');
   const advSection = el('div', 'aob-advanced aob-hidden');
   advToggle.addEventListener('click', () => {
@@ -152,14 +195,6 @@ function buildOnce() {
   advSection.appendChild(reset);
   panel.appendChild(advToggle);
   panel.appendChild(advSection);
-
-  soundBtn = el('button', 'aob-sound', '');
-  soundBtn.addEventListener('click', () => {
-    setMuted(!isMuted());
-    syncSound();
-  });
-  syncSound();
-  panel.appendChild(soundBtn);
 
   const play = el('button', 'aob-play', '▶ Play');
   play.addEventListener('click', () => {
@@ -177,10 +212,14 @@ export function openSettings({ onPlay } = {}) {
   onPlayCb = onPlay;
   refresh();
   root.classList.remove('aob-hidden');
+  // Keep the PWA install banner from overlapping the panel (it sits at the
+  // bottom and can cover the Play button on short / mobile-landscape screens).
+  document.body.classList.add('aob-menu-open');
 }
 
 export function closeSettings() {
   if (root) root.classList.add('aob-hidden');
+  document.body.classList.remove('aob-menu-open');
 }
 
 function injectStyle() {
@@ -189,6 +228,7 @@ function injectStyle() {
   #aob-settings{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
     background:rgba(43,43,43,.55);z-index:10;font-family:'Comic Sans MS','Marker Felt',sans-serif;color:#2b2b2b;}
   #aob-settings.aob-hidden,.aob-advanced.aob-hidden{display:none;}
+  body.aob-menu-open #aob-install{display:none!important;}
   .aob-panel{background:#fdf6e3;border:4px solid #2b2b2b;border-radius:20px;padding:18px 22px;
     width:min(460px,92vw);max-height:92vh;overflow-y:auto;box-shadow:0 12px 0 rgba(43,43,43,.22);}
   .aob-panel h1{margin:0;text-align:center;font-size:34px;}
@@ -204,10 +244,14 @@ function injectStyle() {
   .aob-row-top{display:flex;justify-content:space-between;font-size:14px;margin-bottom:3px;}
   .aob-row-val{font-weight:bold;}
   .aob-row input[type=range]{width:100%;accent-color:#4dabf7;}
-  .aob-adv-toggle,.aob-reset,.aob-play,.aob-sound{font-family:inherit;cursor:pointer;border:3px solid #2b2b2b;
+  .aob-toggles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 2px;}
+  .aob-toggle{font-family:inherit;cursor:pointer;border:3px solid #2b2b2b;border-radius:12px;
+    background:#fff;padding:9px 0;font-size:14px;font-weight:bold;transition:transform .05s;}
+  .aob-toggle:hover{filter:brightness(1.04);} .aob-toggle:active{transform:translateY(2px);}
+  .aob-toggle.off{background:#eee;color:#999;border-color:#bbb;}
+  .aob-adv-toggle,.aob-reset,.aob-play{font-family:inherit;cursor:pointer;border:3px solid #2b2b2b;
     border-radius:12px;background:#fff;font-weight:bold;}
   .aob-adv-toggle{width:100%;padding:11px;margin-top:14px;font-size:15px;}
-  .aob-sound{width:100%;padding:11px;margin-top:12px;font-size:15px;}
   .aob-advanced{margin-top:10px;padding-top:8px;border-top:2px dashed #b9ad8e;}
   .aob-reset{width:100%;padding:8px;margin-top:10px;font-size:13px;background:#ffe9ec;}
   .aob-play{width:100%;padding:15px;margin-top:16px;font-size:21px;background:#4dabf7;color:#08334d;}

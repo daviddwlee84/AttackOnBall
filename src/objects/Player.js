@@ -63,9 +63,12 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       this.tauntUntil = 0; // a fresh threat snaps it out of any gloating
       Sfx.scared();
     } else {
-      // Survived a close call — gloat if it was a real scare and we're off cooldown.
+      // Survived a close call — gloat if enabled, it was a real scare, and we're
+      // off cooldown.
       const scaredFor = now - this.scaredSince;
-      if (scaredFor > 150 && now > this.tauntUntil + 1200) this.startTaunt();
+      if (this.scene.params.tauntOn && scaredFor > 150 && now > this.tauntUntil + 1200) {
+        this.startTaunt();
+      }
     }
     this.threat = threat;
     this.refreshFace();

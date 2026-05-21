@@ -35,7 +35,11 @@ export const DEFAULT_DIFFICULTY = 'medium';
 
 // Non-physics preferences (not touched by presets).
 const PREF_DEFAULTS = {
-  muted: false, // global sound on/off
+  muted: false, // master sound on/off
+  sfxVolume: 0.6, // 0..1
+  musicVolume: 0.35, // 0..1
+  musicOn: true, // background music toggle
+  tauntOn: true, // gloating/幸災樂禍 reaction toggle
 };
 
 export function defaults() {
