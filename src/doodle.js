@@ -88,6 +88,8 @@ export function makeHero(scene, key, size, color, expression) {
   });
 
   const isScared = expression === 'scared';
+  const isSmug = expression === 'smug';
+  const isTongue = expression === 'tongue';
   const cx = x + size / 2;
   const eyeY = y + size * 0.38;
   // Eyes shift with direction to read as "looking where I'm going".
@@ -124,6 +126,30 @@ export function makeHero(scene, key, size, color, expression) {
       ctx.arc(ex, eyeY + size * 0.02, size * 0.04, 0, Math.PI * 2);
       ctx.fill();
     }
+  } else if (isSmug) {
+    // Half-lidded confident squint with one cocked eyebrow.
+    ctx.lineWidth = 4 * S;
+    for (const ex of [cx - eyeDX, cx + eyeDX]) {
+      ctx.beginPath();
+      ctx.moveTo(ex - size * 0.05, eyeY);
+      ctx.lineTo(ex + size * 0.05, eyeY - size * 0.015);
+      ctx.stroke();
+    }
+    ctx.lineWidth = 2.5 * S;
+    ctx.beginPath();
+    ctx.moveTo(cx + eyeDX - size * 0.06, eyeY - size * 0.11);
+    ctx.lineTo(cx + eyeDX + size * 0.06, eyeY - size * 0.15);
+    ctx.stroke();
+  } else if (isTongue) {
+    // Cheeky wink: left eye a happy arc, right eye wide open.
+    ctx.lineWidth = 4 * S;
+    ctx.beginPath();
+    ctx.arc(cx - eyeDX, eyeY + size * 0.04, size * 0.06, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.fillStyle = '#2b2b2b';
+    ctx.arc(cx + eyeDX, eyeY, size * 0.05, 0, Math.PI * 2);
+    ctx.fill();
   } else {
     for (const ex of [cx - eyeDX, cx + eyeDX]) {
       ctx.beginPath();
@@ -132,19 +158,47 @@ export function makeHero(scene, key, size, color, expression) {
     }
   }
 
-  // Open mouth (white box with dark outline) — the franchise's signature look.
-  // Scared gapes wider/taller; death sags open.
-  const mw = isScared ? size * 0.3 : size * 0.34;
-  const mh = expression === 'dead' ? size * 0.22 : isScared ? size * 0.26 : size * 0.16;
-  const mx = cx - mw / 2 + lean * 0.5;
-  const my = y + (isScared ? size * 0.56 : size * 0.58);
-  rc.rectangle(mx, my, mw, mh, {
-    roughness: 1.6,
-    stroke: '#2b2b2b',
-    strokeWidth: 3 * S,
-    fill: '#ffffff',
-    fillStyle: 'solid',
-  });
+  if (isSmug || isTongue) {
+    // A cocky grin instead of the open box.
+    ctx.strokeStyle = '#2b2b2b';
+    ctx.lineWidth = 4 * S;
+    ctx.lineJoin = 'round';
+    const my = y + size * 0.62;
+    ctx.beginPath();
+    if (isSmug) {
+      // Lopsided smirk.
+      ctx.moveTo(cx - size * 0.13, my - size * 0.01);
+      ctx.quadraticCurveTo(cx + size * 0.04, my + size * 0.11, cx + size * 0.17, my - size * 0.04);
+    } else {
+      // Open grin.
+      ctx.moveTo(cx - size * 0.15, my - size * 0.02);
+      ctx.quadraticCurveTo(cx, my + size * 0.13, cx + size * 0.15, my - size * 0.02);
+    }
+    ctx.stroke();
+    if (isTongue) {
+      // Pink tongue poking out.
+      ctx.fillStyle = '#ff8aa8';
+      ctx.lineWidth = 2 * S;
+      ctx.beginPath();
+      ctx.ellipse(cx + size * 0.02, my + size * 0.09, size * 0.07, size * 0.05, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  } else {
+    // Open mouth (white box with dark outline) — the franchise's signature look.
+    // Scared gapes wider/taller; death sags open.
+    const mw = isScared ? size * 0.3 : size * 0.34;
+    const mh = expression === 'dead' ? size * 0.22 : isScared ? size * 0.26 : size * 0.16;
+    const mx = cx - mw / 2 + lean * 0.5;
+    const my = y + (isScared ? size * 0.56 : size * 0.58);
+    rc.rectangle(mx, my, mw, mh, {
+      roughness: 1.6,
+      stroke: '#2b2b2b',
+      strokeWidth: 3 * S,
+      fill: '#ffffff',
+      fillStyle: 'solid',
+    });
+  }
 
   // A little blue sweat drop sells the panic.
   if (isScared) {

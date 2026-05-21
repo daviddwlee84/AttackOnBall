@@ -28,6 +28,14 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.threat = false; // a ball is dangerously close
     this.dead = false;
 
+    // Gloating: after surviving a close call the hero pulls a smug face and
+    // does a little celebratory move for a beat.
+    this.scaredSince = 0;
+    this.tauntUntil = 0;
+    this.tauntStart = 0;
+    this.tauntFace = 'smug';
+    this.tauntStyle = null;
+
     // Soft grounding shadow under the feet.
     this.shadow = scene.add
       .ellipse(x, GROUND_Y + 2 * SCALE, PLAYER_SIZE * 0.9, PLAYER_SIZE * 0.26, 0x000000, 0.18)
@@ -44,16 +52,61 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.refreshFace();
   }
 
-  // A ball within the danger radius makes the hero panic.
+  // A ball within the danger radius makes the hero panic; clearing the danger
+  // after a real scare triggers a gloat.
   setThreatened(threat) {
-    if (this.threat === threat || this.dead) return;
+    if (this.dead || threat === this.threat) return;
+    const now = this.scene.time.now;
+    if (threat) {
+      this.scaredSince = now;
+      this.tauntUntil = 0; // a fresh threat snaps it out of any gloating
+    } else {
+      // Survived a close call — gloat if it was a real scare and we're off cooldown.
+      const scaredFor = now - this.scaredSince;
+      if (scaredFor > 150 && now > this.tauntUntil + 1200) this.startTaunt();
+    }
     this.threat = threat;
     this.refreshFace();
   }
 
-  // Pick the texture from current state: dead > scared > facing direction.
+  // Begin a brief gloat: random smug face + random celebratory move, sometimes
+  // with a taunting word.
+  startTaunt() {
+    this.tauntFace = Math.random() < 0.5 ? 'smug' : 'tongue';
+    this.tauntStyle = ['hop', 'wiggle', 'spin'][Math.floor(Math.random() * 3)];
+    this.tauntStart = this.scene.time.now;
+    this.tauntUntil = this.tauntStart + 850;
+    if (Math.random() < 0.55) this.popTaunt();
+  }
+
+  // Floating taunt word above the hero's head.
+  popTaunt() {
+    const words = ['哼!', '切~', '太慢了', '嘿嘿', '就這?'];
+    const t = this.scene.add
+      .text(this.x, this.y - PLAYER_SIZE * 0.85, Phaser.Utils.Array.GetRandom(words), {
+        fontFamily: '"Comic Sans MS", "Marker Felt", sans-serif',
+        fontSize: `${22 * SCALE}px`,
+        color: '#2b2b2b',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5)
+      .setDepth(60);
+    this.scene.tweens.add({
+      targets: t,
+      y: t.y - 32 * SCALE,
+      alpha: { from: 1, to: 0 },
+      duration: 850,
+      onComplete: () => t.destroy(),
+    });
+  }
+
+  // Pick the texture from current state: dead > gloating > scared > direction.
   refreshFace() {
-    const exp = this.dead ? 'dead' : this.threat ? 'scared' : this.dir < 0 ? 'left' : this.dir > 0 ? 'right' : 'idle';
+    let exp;
+    if (this.dead) exp = 'dead';
+    else if (this.scene.time.now < this.tauntUntil) exp = this.tauntFace;
+    else if (this.threat) exp = 'scared';
+    else exp = this.dir < 0 ? 'left' : this.dir > 0 ? 'right' : 'idle';
     if (exp !== this.facing) {
       this.facing = exp;
       this.setTexture('hero-' + exp);
@@ -66,6 +119,20 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   // body keeps its fixed size, so collisions are unaffected.
   updateVisual(time, dt) {
     if (this.dead) return;
+
+    const now = this.scene.time.now;
+    if (now < this.tauntUntil) {
+      this.updateTaunt(now);
+      this.shadow.x = this.x;
+      this.shadow.setScale(Phaser.Math.Clamp(this.scaleX, 0.85, 1.2), 1);
+      return;
+    }
+    // Just finished gloating — unwind any spin so we don't lerp the long way back.
+    if (this.tauntStyle) {
+      this.angle = Phaser.Math.Angle.WrapDegrees(this.angle);
+      this.tauntStyle = null;
+    }
+
     const dir = Math.sign(this.body.velocity.x);
 
     let tSx;
@@ -96,6 +163,27 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.shadow.x = this.x;
     this.shadow.setScale(Phaser.Math.Clamp(this.scaleX, 0.85, 1.2), 1);
+  }
+
+  // Cosmetic celebration driven by the random taunt style (p = 0..1 progress).
+  updateTaunt(now) {
+    const p = (now - this.tauntStart) / (this.tauntUntil - this.tauntStart);
+    if (this.tauntStyle === 'spin') {
+      this.angle = 360 * p * (this.lastDir < 0 ? -1 : 1);
+      this.scaleX = 1;
+      this.scaleY = 1;
+    } else if (this.tauntStyle === 'wiggle') {
+      this.angle = Math.sin(p * Math.PI * 6) * 16;
+      const s = 1 + Math.sin(p * Math.PI * 6) * 0.05;
+      this.scaleX = s;
+      this.scaleY = 2 - s;
+    } else {
+      // hop: a couple of excited squash-and-stretch bounces in place
+      this.angle = 0;
+      const b = Math.abs(Math.sin(p * Math.PI * 2));
+      this.scaleX = 1 - b * 0.12;
+      this.scaleY = 1 + b * 0.18;
+    }
   }
 
   die() {

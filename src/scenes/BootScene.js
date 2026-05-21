@@ -18,7 +18,7 @@ export default class BootScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     // Hero expressions
-    for (const exp of ['idle', 'left', 'right', 'scared', 'dead']) {
+    for (const exp of ['idle', 'left', 'right', 'scared', 'smug', 'tongue', 'dead']) {
       makeHero(this, `hero-${exp}`, PLAYER_SIZE, HERO_COLOR, exp);
     }
 
