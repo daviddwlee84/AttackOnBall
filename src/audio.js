@@ -20,6 +20,7 @@ const SFX = {
   taunt: [0.5, , 537, 0.02, 0.02, 0.22, 1, 1.59, -6.98, 4.97], // cheeky two-note
   scared: [0.5, , 440, , 0.04, 0.1, 1, 2, -8, , , , , , , , , 0.5], // quick "uh-oh" dip
   death: [0.6, , 925, 0.04, 0.3, 0.6, 1, 0.3, , 6.27, -184, 0.09, 0.17], // splat
+  hurt: [0.55, , 280, 0.01, 0.05, 0.15, 1, 2.5, -6, , , , , 0.4], // lose-a-life zap
   milestone: [0.5, , 539, 0, 0.04, 0.29, 1, 1.92, , , 567, 0.02, 0.02, , , , 0.04], // rise
   ui: [0.4, , 1500, , 0.01, 0.03, 1, , , , , , , , , , , 0.6], // soft click
 };
@@ -65,6 +66,7 @@ export const Sfx = {
   taunt: () => play(SFX.taunt),
   scared: () => play(SFX.scared),
   death: () => play(SFX.death),
+  hurt: () => play(SFX.hurt),
   milestone: () => play(SFX.milestone),
   ui: () => play(SFX.ui),
   // Bounce thud; pitch drops as the ball gets bigger (sizeIdx 0..3).

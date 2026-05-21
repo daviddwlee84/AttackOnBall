@@ -58,3 +58,6 @@ export const BALL_COLORS = [
 ];
 
 export const HERO_COLOR = '#9ad42b';
+
+// Lives mode: how long the hero is invincible (and blinking) after respawning.
+export const INVINCIBLE_MS = 1800;

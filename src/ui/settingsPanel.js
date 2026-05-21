@@ -39,9 +39,17 @@ let root;
 let onPlayCb;
 const controls = {};
 const presetBtns = {};
+const modeBtns = {};
 let diffLabel;
 let bestLabel;
 let soundBtn;
+
+// Best score is stored per mode; classic also reads the legacy 'aob-best' key.
+function readBest(mode) {
+  let v = Number(localStorage.getItem(`aob-best-${mode}`) || 0);
+  if (mode === 'classic') v = Math.max(v, Number(localStorage.getItem('aob-best') || 0));
+  return v;
+}
 
 function el(tag, cls, text) {
   const e = document.createElement(tag);
@@ -114,8 +122,10 @@ function refresh() {
     input.value = s[k];
     valSpan.textContent = fmtVal(spec, s[k]);
   }
-  const best = Number(localStorage.getItem(BEST_KEY) || 0);
-  bestLabel.textContent = best > 0 ? `Best: ${best.toFixed(1)}s` : '';
+  const mode = getSettings().mode;
+  const best = readBest(mode);
+  bestLabel.textContent = best > 0 ? `Best (${mode}): ${best.toFixed(1)}s` : '';
+  for (const m in modeBtns) modeBtns[m].classList.toggle('active', mode === m);
   syncSound();
   toggleSyncers.forEach((f) => f());
   refreshPresetHighlight();
@@ -162,6 +172,24 @@ function buildOnce() {
   panel.appendChild(diffLabel);
 
   for (const spec of COMMON) panel.appendChild(makeSlider(spec));
+
+  // Mode: classic (1 hit) vs lives (N lives + brief invincibility on revive).
+  panel.appendChild(el('div', 'aob-section', 'Mode'));
+  const modeRow = el('div', 'aob-modes');
+  for (const [val, label] of [
+    ['classic', 'Classic'],
+    ['lives', 'Lives'],
+  ]) {
+    const b = el('button', 'aob-mode', label);
+    b.addEventListener('click', () => {
+      setSettings({ mode: val });
+      refresh();
+    });
+    modeRow.appendChild(b);
+    modeBtns[val] = b;
+  }
+  panel.appendChild(modeRow);
+  panel.appendChild(makeSlider({ key: 'lives', label: 'Lives (lives mode)', min: 2, max: 5, step: 1 }));
 
   // Sound section: a compact row of toggles (master / music / gloat) + the two
   // per-channel volume sliders.
@@ -241,6 +269,11 @@ function injectStyle() {
   .aob-preset:hover{filter:brightness(1.04);} .aob-preset:active{transform:translateY(2px);}
   .aob-preset.active{background:#9ad42b;}
   .aob-diff{text-align:center;margin:8px 0 4px;opacity:.75;font-size:14px;}
+  .aob-modes{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:2px 0;}
+  .aob-mode{font-family:inherit;cursor:pointer;border:3px solid #2b2b2b;border-radius:12px;
+    background:#fff;padding:10px 0;font-size:15px;font-weight:bold;transition:transform .05s;}
+  .aob-mode:hover{filter:brightness(1.04);} .aob-mode:active{transform:translateY(2px);}
+  .aob-mode.active{background:#9ad42b;}
   .aob-row{display:block;margin:11px 0;}
   .aob-row-top{display:flex;justify-content:space-between;font-size:14px;margin-bottom:3px;}
   .aob-row-val{font-weight:bold;}

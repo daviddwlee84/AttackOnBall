@@ -35,6 +35,8 @@ export const DEFAULT_DIFFICULTY = 'medium';
 
 // Non-physics preferences (not touched by presets).
 const PREF_DEFAULTS = {
+  mode: 'classic', // 'classic' (1 hit = over) | 'lives' (N lives + revive)
+  lives: 3, // starting lives in lives mode (2..5)
   muted: false, // master sound on/off
   sfxVolume: 0.6, // 0..1
   musicVolume: 0.35, // 0..1

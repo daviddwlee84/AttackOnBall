@@ -8,6 +8,7 @@ import {
   SCALE,
   BALL_COLORS,
   PLAYER_SIZE,
+  INVINCIBLE_MS,
 } from '../config.js';
 import Player from '../objects/Player.js';
 import Arena from '../systems/arena.js';
@@ -33,6 +34,12 @@ export default class GameScene extends Phaser.Scene {
     this.score = 0;
     this.segment = 0;
     this.over = false;
+
+    // Game mode: classic = one hit ends it; lives = N hits, each non-fatal hit
+    // costs a life and grants brief invincibility while the balls keep flying.
+    this.mode = this.params.mode === 'lives' ? 'lives' : 'classic';
+    this.lives = this.mode === 'lives' ? Phaser.Math.Clamp(this.params.lives | 0, 1, 5) : 1;
+    this.invincible = false;
 
     this.arena = new Arena(this);
 
@@ -63,8 +70,10 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.balls, this.ground);
     this.physics.add.collider(this.pickups, this.ground);
 
-    this.physics.add.overlap(this.player, this.balls, () => this.die());
+    this.physics.add.overlap(this.player, this.balls, () => this.onHit());
     this.physics.add.overlap(this.player, this.pickups, (_p, pickup) => this.collect(pickup));
+
+    this.makeLivesHud();
 
     // Input: keyboard + touch (move toward wherever a finger is held).
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -228,6 +237,56 @@ export default class GameScene extends Phaser.Scene {
     pickup.destroy();
   }
 
+  // Row of hearts under the score (lives mode only).
+  makeLivesHud() {
+    if (this.mode !== 'lives') return;
+    this.hearts = [];
+    const gap = 34 * SCALE;
+    const startX = GAME_W / 2 - ((this.lives - 1) * gap) / 2;
+    for (let i = 0; i < this.lives; i++) {
+      const h = this.add
+        .text(startX + i * gap, 96 * SCALE, '♥', { fontFamily: 'sans-serif', fontSize: `${30 * SCALE}px`, color: '#ff5b6b' })
+        .setOrigin(0.5)
+        .setDepth(44);
+      this.hearts.push(h);
+    }
+  }
+
+  updateHearts() {
+    if (!this.hearts) return;
+    this.hearts.forEach((h, i) => {
+      const alive = i < this.lives;
+      h.setText(alive ? '♥' : '♡');
+      h.setColor(alive ? '#ff5b6b' : '#9a8f78');
+    });
+  }
+
+  // A ball touched the hero. In lives mode with lives to spare, lose one and
+  // become briefly invincible (balls keep flying); otherwise it's game over.
+  onHit() {
+    if (this.over || this.invincible) return;
+    if (this.mode === 'lives' && this.lives > 1) {
+      this.lives -= 1;
+      this.updateHearts();
+      this.hurt();
+    } else {
+      this.die();
+    }
+  }
+
+  // Non-fatal hit: flash + blink + short invincibility, no freeze.
+  hurt() {
+    this.invincible = true;
+    Sfx.hurt();
+    this.cameras.main.shake(150, 0.006);
+    const blink = this.tweens.add({ targets: this.player, alpha: 0.3, duration: 110, yoyo: true, repeat: -1 });
+    this.time.delayedCall(INVINCIBLE_MS, () => {
+      blink.stop();
+      this.player.setAlpha(1);
+      this.invincible = false;
+    });
+  }
+
   die() {
     if (this.over) return;
     this.over = true;
@@ -254,7 +313,7 @@ export default class GameScene extends Phaser.Scene {
     this.balls.getChildren().forEach((b) => b.body.setVelocity(0, 0).setAllowGravity(false));
     this.cameras.main.shake(250, 0.01);
     this.time.delayedCall(1000, () => {
-      this.scene.start('GameOverScene', { score: this.score });
+      this.scene.start('GameOverScene', { score: this.score, mode: this.mode });
     });
   }
 }

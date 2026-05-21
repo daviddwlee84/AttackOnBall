@@ -2,7 +2,16 @@ import * as Phaser from 'phaser';
 import { GAME_W, GAME_H, SCALE } from '../config.js';
 import { makeDoodleButton } from '../ui/button.js';
 
-const BEST_KEY = 'aob-best';
+// Best score is tracked per mode (lives mode is more forgiving, so it would
+// otherwise inflate the classic best). Classic migrates the legacy 'aob-best'.
+function bestKey(mode) {
+  return `aob-best-${mode}`;
+}
+function readBest(mode) {
+  let v = Number(localStorage.getItem(bestKey(mode)) || 0);
+  if (mode === 'classic') v = Math.max(v, Number(localStorage.getItem('aob-best') || 0));
+  return v;
+}
 
 // Shows the final score, tracks the best run in localStorage, and restarts.
 export default class GameOverScene extends Phaser.Scene {
@@ -12,11 +21,12 @@ export default class GameOverScene extends Phaser.Scene {
 
   init(data) {
     this.score = data.score || 0;
+    this.mode = data.mode || 'classic';
   }
 
   create() {
-    const best = Math.max(this.score, Number(localStorage.getItem(BEST_KEY) || 0));
-    localStorage.setItem(BEST_KEY, String(best));
+    const best = Math.max(this.score, readBest(this.mode));
+    localStorage.setItem(bestKey(this.mode), String(best));
     const isNewBest = this.score >= best && this.score > 0;
 
     this.add.rectangle(0, 0, GAME_W, GAME_H, 0x2b2b2b, 0.55).setOrigin(0).setDepth(70);
