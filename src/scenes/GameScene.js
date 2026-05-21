@@ -222,13 +222,11 @@ export default class GameScene extends Phaser.Scene {
     this.dust.emitParticleAt(x, GROUND_Y, n);
   }
 
-  // A floating "+♥" where a bonus heart was won.
+  // A floating heart where a bonus heart was won (texture, not an emoji glyph).
   heartPopup(x, y) {
-    const t = this.add
-      .text(x, y, '+♥', { fontFamily: 'sans-serif', fontSize: `${26 * SCALE}px`, color: '#ff5b6b', fontStyle: 'bold' })
-      .setOrigin(0.5)
-      .setDepth(61);
-    this.tweens.add({ targets: t, y: y - 44 * SCALE, alpha: 0, duration: 700, onComplete: () => t.destroy() });
+    const img = this.add.image(x, y, 'heart-pickup').setDepth(61);
+    img.setScale((28 * SCALE) / img.width);
+    this.tweens.add({ targets: img, y: y - 44 * SCALE, alpha: 0, duration: 700, onComplete: () => img.destroy() });
   }
 
   collect(pickup) {
@@ -266,21 +264,27 @@ export default class GameScene extends Phaser.Scene {
   // lives plus a "charging" heart that fills bottom-up with segment progress.
   makeLivesHud() {
     if (this.mode !== 'lives') return;
-    const font = { fontFamily: 'sans-serif', fontSize: `${30 * SCALE}px`, color: '#ff5b6b' };
+    // Use the doodle heart *texture* (not a '♥' font glyph): iOS renders the
+    // glyph as a color emoji, which ignores our color and breaks the fill
+    // effect. A texture looks identical on every platform and crops cleanly.
     this.heartObjs = [];
     for (let i = 0; i < this.maxLives; i++) {
-      this.heartObjs.push(this.add.text(0, 0, '♥', font).setOrigin(0.5).setDepth(44).setVisible(false));
+      this.heartObjs.push(this.add.image(0, 0, 'heart-pickup').setDepth(44).setVisible(false));
     }
-    // Faint outline behind + a red heart cropped to the fill fraction in front.
-    this.chargerBg = this.add.text(0, 0, '♥', { ...font, color: '#e6dcc6' }).setOrigin(0.5).setDepth(44).setVisible(false);
-    this.chargerFill = this.add.text(0, 0, '♥', font).setOrigin(0.5).setDepth(45).setVisible(false);
+    // Faint heart behind + a solid heart cropped to the fill fraction in front.
+    this.chargerBg = this.add.image(0, 0, 'heart-pickup').setDepth(44).setVisible(false);
+    this.chargerFill = this.add.image(0, 0, 'heart-pickup').setDepth(45).setVisible(false);
+    this.heartScale = (36 * SCALE) / this.heartObjs[0].width;
+    [...this.heartObjs, this.chargerBg, this.chargerFill].forEach((h) => h.setScale(this.heartScale));
+    this.chargerBg.setAlpha(0.3);
+    this.heartGap = 40 * SCALE;
     this.layoutHearts();
   }
 
   // Position/visibility of the heart row (recomputed whenever lives change).
   layoutHearts() {
     if (this.mode !== 'lives') return;
-    const gap = 34 * SCALE;
+    const gap = this.heartGap;
     const y = 96 * SCALE;
     const charging = this.lives < this.maxLives;
     const count = this.lives + (charging ? 1 : 0);
@@ -298,12 +302,17 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  // frac: 0..1 progress to the next heart — crop the red heart to its bottom slice.
+  // frac: 0..1 progress to the next heart — fill the heart shape bottom-up.
   updateCharger(frac) {
     if (this.mode !== 'lives' || !this.chargerFill.visible) return;
-    const w = this.chargerFill.width;
-    const h = this.chargerFill.height;
-    this.chargerFill.setCrop(0, h * (1 - frac), w, h * frac);
+    const fw = this.chargerFill.frame.width;
+    const fh = this.chargerFill.frame.height;
+    // The heart occupies ~16%..82% of the texture height (see makeHeart).
+    const top = 0.16 * fh;
+    const bot = 0.82 * fh;
+    const f = Phaser.Math.Clamp(frac, 0, 1);
+    const visTop = bot - f * (bot - top);
+    this.chargerFill.setCrop(0, visTop, fw, bot - visTop);
   }
 
   // Bank a heart (filled charger or heart drop), capped, with a pop + chime.
@@ -313,7 +322,13 @@ export default class GameScene extends Phaser.Scene {
     this.layoutHearts();
     Sfx.heart();
     const h = this.heartObjs[this.lives - 1];
-    this.tweens.add({ targets: h, scale: { from: 1.7, to: 1 }, duration: 320, ease: 'Back.out' });
+    this.tweens.add({
+      targets: h,
+      scaleX: { from: this.heartScale * 1.6, to: this.heartScale },
+      scaleY: { from: this.heartScale * 1.6, to: this.heartScale },
+      duration: 320,
+      ease: 'Back.out',
+    });
     return true;
   }
 
