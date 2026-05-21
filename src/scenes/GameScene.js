@@ -7,6 +7,7 @@ import {
   SEGMENT,
   SCALE,
   BALL_COLORS,
+  PLAYER_SIZE,
 } from '../config.js';
 import Player from '../objects/Player.js';
 import Arena from '../systems/arena.js';
@@ -42,6 +43,19 @@ export default class GameScene extends Phaser.Scene {
     this.balls = this.physics.add.group();
     this.pickups = this.physics.add.group();
     this.spawner = new Spawner(this);
+
+    // Reusable dust emitter for ball landings (puffs out along the ground).
+    this.dust = this.add
+      .particles(0, 0, 'puff', {
+        speed: { min: 30 * SCALE, max: 110 * SCALE },
+        angle: { min: 200, max: 340 },
+        lifespan: 420,
+        scale: { start: 0.5, end: 1.2 },
+        alpha: { start: 0.55, end: 0 },
+        gravityY: -60 * SCALE,
+        emitting: false,
+      })
+      .setDepth(1);
 
     // Balls bounce elastically on the ground (energy conserved → stable height).
     this.physics.add.collider(this.balls, this.ground);
@@ -100,19 +114,31 @@ export default class GameScene extends Phaser.Scene {
     this.scene.pause();
   }
 
-  update(_time, dtMs) {
+  update(time, dtMs) {
     if (this.over) return;
     const dt = dtMs / 1000;
     this.elapsed += dt;
 
     this.player.move(this.readDirection());
+    this.player.updateVisual(time, dt);
     this.spawner.update(dt, this.elapsed);
 
-    // Cull balls that have flown off the far side. Copy the list first since
-    // destroy() mutates the group's child array mid-iteration.
+    // Drive each ball's shadow/bounce squash, flag whether any ball is close
+    // enough to scare the hero, and cull the ones that have flown off-screen.
+    // Copy the list first since destroy() mutates the group's child array.
+    let threatened = false;
     for (const ball of [...this.balls.getChildren()]) {
+      ball.tick();
+      if (!threatened) {
+        const gap =
+          Phaser.Math.Distance.Between(this.player.x, this.player.y, ball.x, ball.y) -
+          ball.radius -
+          PLAYER_SIZE * 0.5;
+        if (gap < 70 * SCALE) threatened = true;
+      }
       if (ball.isOffscreen()) ball.destroy();
     }
+    this.player.setThreatened(threatened);
     // Catch any pickup that slips past the bottom.
     for (const pickup of [...this.pickups.getChildren()]) {
       if (pickup.y > GAME_H + 60 * SCALE) pickup.destroy();
@@ -128,6 +154,12 @@ export default class GameScene extends Phaser.Scene {
       this.segment = seg;
       this.arena.nextPalette();
     }
+  }
+
+  // Puff dust where a ball touches the ground; bigger balls kick up more.
+  spawnDust(x, radius) {
+    const n = Phaser.Math.Clamp(Math.round(radius / (8 * SCALE)) + 2, 3, 8);
+    this.dust.emitParticleAt(x, GROUND_Y, n);
   }
 
   collect(pickup) {

@@ -7,6 +7,9 @@ import { PAD } from '../doodle.js';
 // launch is clamped so its apex always clears the hero's head — keeping the
 // game winnable regardless of the random roll. Despawns once it sails off the
 // far side.
+//
+// Each ball owns a ground shadow that tracks its height (selling the bounce)
+// and squashes on landing; the scene drives this via tick() each frame.
 export default class Ball extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, sizeIdx, colorIdx) {
     const size = BALL_SIZES[sizeIdx];
@@ -22,6 +25,12 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
 
     this.radius = size.r;
     this.dir = fromLeft ? 1 : -1;
+    this.wasOnFloor = false;
+
+    // Ground shadow, sized/faded each frame from the ball's height.
+    this.shadow = scene.add
+      .ellipse(x, GROUND_Y + 2, this.radius * 2, this.radius * 0.55, 0x000000, 0.22)
+      .setDepth(-1);
   }
 
   // Configure the body and apply the launch velocity. MUST be called *after* the
@@ -56,8 +65,39 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     return this;
   }
 
+  // Per-frame upkeep (called from GameScene.update): sync the shadow to the
+  // ball's height and detect the landing edge to squash + kick up dust.
+  tick() {
+    const bottom = this.y + this.radius;
+    const height = Math.max(0, GROUND_Y - bottom); // px above the floor
+    const t = Phaser.Math.Clamp(1 - height / (260 * (this.radius / 36)), 0.25, 1);
+    this.shadow.x = this.x;
+    this.shadow.setScale(t, t);
+    this.shadow.setAlpha(0.22 * t);
+
+    const onFloor = this.body.onFloor();
+    if (onFloor && !this.wasOnFloor) this.land();
+    this.wasOnFloor = onFloor;
+  }
+
+  // Squash on impact, then spring back; ask the scene to puff dust.
+  land() {
+    this.scene.tweens.killTweensOf(this);
+    this.setScale(1.28, 0.72);
+    this.scene.tweens.add({ targets: this, scaleX: 1, scaleY: 1, duration: 200, ease: 'Back.out' });
+    if (this.scene.spawnDust) this.scene.spawnDust(this.x, this.radius);
+  }
+
   // True once the ball has drifted well off either side and can be culled.
   isOffscreen() {
     return this.x < -2 * this.radius - 40 || this.x > GAME_W + 2 * this.radius + 40;
+  }
+
+  destroy(fromScene) {
+    if (this.shadow) {
+      this.shadow.destroy();
+      this.shadow = null;
+    }
+    super.destroy(fromScene);
   }
 }

@@ -20,6 +20,17 @@ export default class NumberPickup extends Phaser.Physics.Arcade.Sprite {
     this.body.setGravityY(this.scene.params.gravity * 0.35); // floats down gently
     this.setBounce(0, 0.3);
 
+    // A lazy wobble + breathing pulse so the bubble feels collectible, not inert.
+    this.setAngularVelocity(Phaser.Math.Between(-50, 50));
+    this.scene.tweens.add({
+      targets: this,
+      scale: { from: 0.92, to: 1.08 },
+      duration: 700,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.inOut',
+    });
+
     // Fade out if left uncollected so the floor doesn't clutter with numbers.
     this.scene.time.delayedCall(6000, () => {
       if (!this.active) return;

@@ -53,7 +53,7 @@ export function makeBall(scene, key, radius, fillColor) {
 
 /**
  * Hero: a rounded green blob with a face. `expression` is one of
- * 'idle' | 'left' | 'right' | 'dead'.
+ * 'idle' | 'left' | 'right' | 'scared' | 'dead'.
  */
 export function makeHero(scene, key, size, color, expression) {
   const canvas = makeCanvas(size + PAD * 2, size + PAD * 2);
@@ -87,6 +87,7 @@ export function makeHero(scene, key, size, color, expression) {
     strokeWidth: 3 * S,
   });
 
+  const isScared = expression === 'scared';
   const cx = x + size / 2;
   const eyeY = y + size * 0.38;
   // Eyes shift with direction to read as "looking where I'm going".
@@ -109,6 +110,20 @@ export function makeHero(scene, key, size, color, expression) {
       ctx.lineTo(ex - s, eyeY + s);
       ctx.stroke();
     }
+  } else if (isScared) {
+    // Wide "O_O" eyes: white sclera ring with a small dark pupil.
+    for (const ex of [cx - eyeDX, cx + eyeDX]) {
+      ctx.beginPath();
+      ctx.fillStyle = '#ffffff';
+      ctx.arc(ex, eyeY, size * 0.085, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = 2.5 * S;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.fillStyle = '#2b2b2b';
+      ctx.arc(ex, eyeY + size * 0.02, size * 0.04, 0, Math.PI * 2);
+      ctx.fill();
+    }
   } else {
     for (const ex of [cx - eyeDX, cx + eyeDX]) {
       ctx.beginPath();
@@ -118,10 +133,11 @@ export function makeHero(scene, key, size, color, expression) {
   }
 
   // Open mouth (white box with dark outline) — the franchise's signature look.
-  const mw = size * 0.34;
-  const mh = expression === 'dead' ? size * 0.22 : size * 0.16;
+  // Scared gapes wider/taller; death sags open.
+  const mw = isScared ? size * 0.3 : size * 0.34;
+  const mh = expression === 'dead' ? size * 0.22 : isScared ? size * 0.26 : size * 0.16;
   const mx = cx - mw / 2 + lean * 0.5;
-  const my = y + size * 0.58;
+  const my = y + (isScared ? size * 0.56 : size * 0.58);
   rc.rectangle(mx, my, mw, mh, {
     roughness: 1.6,
     stroke: '#2b2b2b',
@@ -129,6 +145,21 @@ export function makeHero(scene, key, size, color, expression) {
     fill: '#ffffff',
     fillStyle: 'solid',
   });
+
+  // A little blue sweat drop sells the panic.
+  if (isScared) {
+    ctx.fillStyle = '#4dabf7';
+    ctx.strokeStyle = '#2b2b2b';
+    ctx.lineWidth = 1.5 * S;
+    const dx = x + size * 0.9;
+    const dy = y + size * 0.26;
+    ctx.beginPath();
+    ctx.moveTo(dx, dy - size * 0.07);
+    ctx.quadraticCurveTo(dx + size * 0.06, dy + size * 0.02, dx, dy + size * 0.05);
+    ctx.quadraticCurveTo(dx - size * 0.06, dy + size * 0.02, dx, dy - size * 0.07);
+    ctx.fill();
+    ctx.stroke();
+  }
 
   register(scene, key, canvas);
 }
@@ -174,6 +205,22 @@ export function makeFragment(scene, key) {
       fillStyle: 'solid',
     }
   );
+  register(scene, key, canvas);
+}
+
+/** Soft round puff for the dust kicked up when a ball lands. */
+export function makePuff(scene, key) {
+  const size = 28 * S;
+  const canvas = makeCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+  const g = ctx.createRadialGradient(size / 2, size / 2, 1, size / 2, size / 2, size / 2);
+  g.addColorStop(0, 'rgba(255,255,255,0.85)');
+  g.addColorStop(0.6, 'rgba(255,255,255,0.35)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+  ctx.fill();
   register(scene, key, canvas);
 }
 
