@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GROUND_Y, PLAYER_SIZE, SCALE } from '../config.js';
+import { Sfx } from '../audio.js';
 
 // The green doodle hero. Moves only horizontally and stands on the water line.
 // Its facial expression (texture) reflects what it's doing — looking where it
@@ -60,6 +61,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     if (threat) {
       this.scaredSince = now;
       this.tauntUntil = 0; // a fresh threat snaps it out of any gloating
+      Sfx.scared();
     } else {
       // Survived a close call — gloat if it was a real scare and we're off cooldown.
       const scaredFor = now - this.scaredSince;
@@ -76,6 +78,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.tauntStyle = ['hop', 'wiggle', 'spin'][Math.floor(Math.random() * 3)];
     this.tauntStart = this.scene.time.now;
     this.tauntUntil = this.tauntStart + 850;
+    Sfx.taunt();
     if (Math.random() < 0.55) this.popTaunt();
   }
 

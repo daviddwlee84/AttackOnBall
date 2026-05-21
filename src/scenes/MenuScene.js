@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { GAME_W, GAME_H, GROUND_Y, GROUND_H, PALETTES, SCALE } from '../config.js';
 import { openSettings, closeSettings } from '../ui/settingsPanel.js';
+import { Sfx, unlockAudio } from '../audio.js';
 
 // Animated backdrop behind the HTML settings panel. The panel (presets +
 // advanced settings + Play) is the actual start screen; Play launches the game.
@@ -34,6 +35,8 @@ export default class MenuScene extends Phaser.Scene {
 
     openSettings({
       onPlay: () => {
+        unlockAudio(); // first user gesture — enable the AudioContext
+        Sfx.ui();
         closeSettings();
         this.scene.start('GameScene');
       },

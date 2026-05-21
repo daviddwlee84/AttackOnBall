@@ -33,8 +33,13 @@ const ADVANCED_DEFAULTS = {
 
 export const DEFAULT_DIFFICULTY = 'medium';
 
+// Non-physics preferences (not touched by presets).
+const PREF_DEFAULTS = {
+  muted: false, // global sound on/off
+};
+
 export function defaults() {
-  return { difficulty: DEFAULT_DIFFICULTY, ...PRESETS[DEFAULT_DIFFICULTY], ...ADVANCED_DEFAULTS };
+  return { difficulty: DEFAULT_DIFFICULTY, ...PRESETS[DEFAULT_DIFFICULTY], ...ADVANCED_DEFAULTS, ...PREF_DEFAULTS };
 }
 
 let current = load();

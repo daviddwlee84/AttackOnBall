@@ -13,6 +13,7 @@ import Player from '../objects/Player.js';
 import Arena from '../systems/arena.js';
 import Spawner from '../systems/spawner.js';
 import { gameParams } from '../settings.js';
+import { Sfx, isMuted, toggleMuted } from '../audio.js';
 
 // The core gameplay loop: move the hero, dodge the bouncing balls, grab numbers,
 // and survive. Score climbs with time; every 10 points the arena recolors.
@@ -73,6 +74,7 @@ export default class GameScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-ESC', this.pauseGame, this);
     this.input.keyboard.on('keydown-P', this.pauseGame, this);
     this.makePauseButton();
+    this.makeMuteButton();
 
     // Test hook (used by scripts/smoke-test.mjs) — harmless in normal play.
     if (typeof window !== 'undefined') window.__aob = this;
@@ -83,8 +85,8 @@ export default class GameScene extends Phaser.Scene {
     if (this.cursors.right.isDown || this.keyD.isDown) return 1;
     const p = this.input.activePointer;
     if (p.isDown) {
-      // Ignore taps in the top-right pause-button corner so they don't also move.
-      if (p.worldX > GAME_W - 90 * SCALE && p.worldY < 90 * SCALE) return 0;
+      // Ignore taps in the top-right button corner (pause + mute) so they don't move.
+      if (p.worldX > GAME_W - 120 * SCALE && p.worldY < 90 * SCALE) return 0;
       const dx = p.worldX - this.player.x;
       if (Math.abs(dx) > 6 * SCALE) return Math.sign(dx);
     }
@@ -106,6 +108,24 @@ export default class GameScene extends Phaser.Scene {
     // hit-test reliably in Phaser).
     bg.setInteractive({ useHandCursor: true });
     bg.on('pointerdown', () => this.pauseGame());
+  }
+
+  // Sound on/off toggle, just left of the pause button.
+  makeMuteButton() {
+    const size = 40 * SCALE;
+    const x = GAME_W - size * 0.5 - 16 * SCALE - (size + 12 * SCALE);
+    const y = size * 0.5 + 16 * SCALE;
+    const bg = this.add.rectangle(0, 0, size, size, 0xffffff, 0.85).setStrokeStyle(3 * SCALE, 0x2b2b2b);
+    const icon = this.add
+      .text(0, 0, isMuted() ? '🔇' : '🔊', { fontSize: `${20 * SCALE}px` })
+      .setOrigin(0.5);
+    this.add.container(x, y, [bg, icon]).setDepth(80);
+    bg.setInteractive({ useHandCursor: true });
+    bg.on('pointerdown', () => {
+      const muted = toggleMuted();
+      icon.setText(muted ? '🔇' : '🔊');
+      if (!muted) Sfx.ui(); // little blip to confirm sound is back
+    });
   }
 
   pauseGame() {
@@ -164,6 +184,7 @@ export default class GameScene extends Phaser.Scene {
 
   collect(pickup) {
     this.collected += pickup.value;
+    Sfx.collect();
     // Little pop where the number was grabbed.
     const burst = this.add
       .text(pickup.x, pickup.y, `+${pickup.value}`, {
@@ -187,6 +208,7 @@ export default class GameScene extends Phaser.Scene {
   die() {
     if (this.over) return;
     this.over = true;
+    Sfx.death();
     this.player.die();
 
     // Explode the hero into doodle shards.

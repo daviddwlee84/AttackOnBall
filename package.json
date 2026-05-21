@@ -13,9 +13,11 @@
   },
   "dependencies": {
     "phaser": "^4.0.0",
-    "roughjs": "^4.6.6"
+    "roughjs": "^4.6.6",
+    "zzfx": "^1.3.2"
   },
   "devDependencies": {
+    "puppeteer-core": "^25.0.4",
     "vite": "^6.0.0",
     "vite-plugin-pwa": "^0.21.0"
   }

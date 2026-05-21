@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { GAME_W, GROUND_Y, BALL_SIZES, PLAYER_SIZE } from '../config.js';
 import { PAD } from '../doodle.js';
+import { Sfx } from '../audio.js';
 
 // A bouncing ball. Flies in from one side with a random speed + angle, arcs
 // under gravity, and bounces elastically on the ground (stable height). The
@@ -24,6 +25,7 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     scene.physics.add.existing(this);
 
     this.radius = size.r;
+    this.sizeIdx = sizeIdx;
     this.dir = fromLeft ? 1 : -1;
     this.wasOnFloor = false;
 
@@ -86,6 +88,7 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     this.setScale(1.28, 0.72);
     this.scene.tweens.add({ targets: this, scaleX: 1, scaleY: 1, duration: 200, ease: 'Back.out' });
     if (this.scene.spawnDust) this.scene.spawnDust(this.x, this.radius);
+    Sfx.bounce(this.sizeIdx);
   }
 
   // True once the ball has drifted well off either side and can be culled.

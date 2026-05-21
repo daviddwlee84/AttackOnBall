@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_W, GAME_H, GROUND_Y, GROUND_H, PALETTES, SCALE } from '../config.js';
+import { Sfx } from '../audio.js';
 
 // Tween a value from one packed-hex color to another, calling apply(color) each
 // frame. Used for the smooth arena recolor on every palette change.
@@ -75,6 +76,7 @@ export default class Arena {
 
   // Cross-fade to the next palette and flash the bar to signal the milestone.
   nextPalette() {
+    Sfx.milestone();
     const prev = PALETTES[this.index];
     this.index = (this.index + 1) % PALETTES.length;
     const next = PALETTES[this.index];

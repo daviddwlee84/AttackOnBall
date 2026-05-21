@@ -9,6 +9,7 @@ import {
   PRESETS,
   PRESET_KEYS,
 } from '../settings.js';
+import { isMuted, setMuted } from '../audio.js';
 
 const BEST_KEY = 'aob-best';
 
@@ -40,6 +41,7 @@ const controls = {};
 const presetBtns = {};
 let diffLabel;
 let bestLabel;
+let soundBtn;
 
 function el(tag, cls, text) {
   const e = document.createElement(tag);
@@ -91,7 +93,12 @@ function refresh() {
   }
   const best = Number(localStorage.getItem(BEST_KEY) || 0);
   bestLabel.textContent = best > 0 ? `Best: ${best.toFixed(1)}s` : '';
+  syncSound();
   refreshPresetHighlight();
+}
+
+function syncSound() {
+  if (soundBtn) soundBtn.textContent = isMuted() ? '🔇 Sound: Off' : '🔊 Sound: On';
 }
 
 function refreshPresetHighlight() {
@@ -146,6 +153,14 @@ function buildOnce() {
   panel.appendChild(advToggle);
   panel.appendChild(advSection);
 
+  soundBtn = el('button', 'aob-sound', '');
+  soundBtn.addEventListener('click', () => {
+    setMuted(!isMuted());
+    syncSound();
+  });
+  syncSound();
+  panel.appendChild(soundBtn);
+
   const play = el('button', 'aob-play', '▶ Play');
   play.addEventListener('click', () => {
     closeSettings();
@@ -189,9 +204,10 @@ function injectStyle() {
   .aob-row-top{display:flex;justify-content:space-between;font-size:14px;margin-bottom:3px;}
   .aob-row-val{font-weight:bold;}
   .aob-row input[type=range]{width:100%;accent-color:#4dabf7;}
-  .aob-adv-toggle,.aob-reset,.aob-play{font-family:inherit;cursor:pointer;border:3px solid #2b2b2b;
+  .aob-adv-toggle,.aob-reset,.aob-play,.aob-sound{font-family:inherit;cursor:pointer;border:3px solid #2b2b2b;
     border-radius:12px;background:#fff;font-weight:bold;}
   .aob-adv-toggle{width:100%;padding:11px;margin-top:14px;font-size:15px;}
+  .aob-sound{width:100%;padding:11px;margin-top:12px;font-size:15px;}
   .aob-advanced{margin-top:10px;padding-top:8px;border-top:2px dashed #b9ad8e;}
   .aob-reset{width:100%;padding:8px;margin-top:10px;font-size:13px;background:#ffe9ec;}
   .aob-play{width:100%;padding:15px;margin-top:16px;font-size:21px;background:#4dabf7;color:#08334d;}
