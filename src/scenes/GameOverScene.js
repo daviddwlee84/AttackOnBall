@@ -63,18 +63,31 @@ export default class GameOverScene extends Phaser.Scene {
     // tap can't accidentally trigger them.
     this.ready = false;
     const playAgain = makeDoodleButton(this, GAME_W / 2, GAME_H * 0.66, '▶ Play Again', 0x4dabf7, () => {
-      if (this.ready) this.scene.start('GameScene');
+      if (this.ready) this.restart();
     }).setDepth(72);
     const settings = makeDoodleButton(this, GAME_W / 2, GAME_H * 0.82, '⚙ Settings', 0xffd43b, () => {
-      if (this.ready) this.scene.start('MenuScene');
+      if (this.ready) this.toMenu();
     }).setDepth(72);
     [playAgain, settings].forEach((b) => b.setAlpha(0));
 
     this.time.delayedCall(450, () => {
       this.ready = true;
       this.tweens.add({ targets: [playAgain, settings], alpha: 1, duration: 200 });
-      this.input.keyboard.once('keydown-SPACE', () => this.scene.start('GameScene'));
-      this.input.keyboard.once('keydown-M', () => this.scene.start('MenuScene'));
+      this.input.keyboard.once('keydown-SPACE', () => this.restart());
+      this.input.keyboard.once('keydown-M', () => this.toMenu());
     });
+  }
+
+  // This scene is an overlay on top of the (frozen) GameScene — tear both down.
+  restart() {
+    this.scene.stop('GameScene');
+    this.scene.stop();
+    this.scene.start('GameScene');
+  }
+
+  toMenu() {
+    this.scene.stop('GameScene');
+    this.scene.stop();
+    this.scene.start('MenuScene');
   }
 }

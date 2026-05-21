@@ -193,6 +193,7 @@ function buildOnce() {
   const auto = makeToggle('autoRecover', '💗 Auto-recover hearts');
   auto.classList.add('wide');
   panel.appendChild(auto);
+  panel.appendChild(makeSlider({ key: 'heartDropChance', label: 'Heart drop chance', min: 0, max: 0.25, step: 0.01, pct: true }));
 
   // Sound section: a compact row of toggles (master / music / gloat) + the two
   // per-channel volume sliders.

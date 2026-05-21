@@ -47,7 +47,7 @@ export default class Spawner {
   spawnPickup() {
     const s = this.scene;
     // In lives mode, a slice of drops are bonus hearts (only while below the cap).
-    if (s.mode === 'lives' && s.lives < s.maxLives && Math.random() < 0.18) {
+    if (s.mode === 'lives' && s.lives < s.maxLives && Math.random() < s.params.heartDropChance) {
       const heart = new HeartPickup(s);
       s.pickups.add(heart);
       heart.configure();

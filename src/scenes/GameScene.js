@@ -361,6 +361,15 @@ export default class GameScene extends Phaser.Scene {
     Sfx.death();
     this.player.die();
 
+    // Clear the heart HUD so it reads empty on the game-over screen (the last
+    // life isn't decremented by onHit, so zero it here).
+    if (this.mode === 'lives' && this.heartObjs) {
+      this.lives = 0;
+      this.layoutHearts();
+      this.chargerBg.setVisible(false);
+      this.chargerFill.setVisible(false);
+    }
+
     // Explode the hero into doodle shards.
     const colors = BALL_COLORS.map((c) => Phaser.Display.Color.HexStringToColor(c).color);
     const emitter = this.add.particles(this.player.x, this.player.y, 'fragment', {
@@ -376,11 +385,12 @@ export default class GameScene extends Phaser.Scene {
     emitter.explode(28);
     this.player.setVisible(false);
 
-    // Freeze the balls in place for a beat, then go to the game-over screen.
+    // Freeze the balls in place for a beat, then overlay the game-over screen
+    // (launch, not start, so the frozen arena shows through it like Pause does).
     this.balls.getChildren().forEach((b) => b.body.setVelocity(0, 0).setAllowGravity(false));
     this.cameras.main.shake(250, 0.01);
     this.time.delayedCall(1000, () => {
-      this.scene.start('GameOverScene', { score: this.score, mode: this.mode });
+      this.scene.launch('GameOverScene', { score: this.score, mode: this.mode });
     });
   }
 }
