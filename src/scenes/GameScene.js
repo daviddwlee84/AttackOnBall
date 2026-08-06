@@ -125,7 +125,8 @@ export default class GameScene extends Phaser.Scene {
     // "Play Again" / "Restart"), that held pointer would otherwise be read as a
     // move command and jerk the fresh hero toward the button. Ignore the pointer
     // until it has been released once.
-    this.pointerArmed = !this.input.activePointer.isDown;
+    this._worldPt = new Phaser.Math.Vector2();
+    this.pointerArmed = !this.heldPointer();
     // Set while a press started on one of the HUD buttons, so dragging off it
     // doesn't turn into a move command. Replaces the old blanket "ignore the
     // top-right corner" rectangle, which was a real invisible wall.
@@ -194,17 +195,39 @@ export default class GameScene extends Phaser.Scene {
     if (lt >= 0) return -1;
     if (rt >= 0) return 1;
 
+    const held = this.heldPointer();
     if (!this.pointerArmed) {
-      if (!this.input.activePointer.isDown) this.pointerArmed = true;
+      if (!held) this.pointerArmed = true;
       return 0;
     }
     if (this.uiHold) return 0;
-    const p = this.input.activePointer;
-    if (p.isDown) {
-      const dx = p.worldX - this.player.x;
+    if (held) {
+      // Resolve the world point here rather than reading pointer.worldX, which
+      // Phaser only refreshes while hit-testing — for a finger that is held
+      // still it can be stale, and for the camera zoom used by debug runs it
+      // would be wrong.
+      const wx = this.cameras.main.getWorldPoint(held.x, held.y, this._worldPt).x;
+      const dx = wx - this.player.x;
       if (Math.abs(dx) > 6 * SCALE) return Math.sign(dx);
     }
     return 0;
+  }
+
+  // The most recently pressed pointer that is STILL down, or null.
+  //
+  // Not input.activePointer: that tracks the most recent pointer *event*,
+  // including an "up". Lift one thumb while the other stays down and
+  // activePointer refers to the one that just left the screen — isDown is
+  // false, so the hero stops even though a finger is still pressed. Picking the
+  // newest still-held pointer also gives touch the same last-press-wins feel as
+  // the keyboard: the newer thumb takes over, and releasing it hands control
+  // straight back to the older one.
+  heldPointer() {
+    let best = null;
+    for (const p of this.input.manager.pointers) {
+      if (p.isDown && (!best || p.downTime > best.downTime)) best = p;
+    }
+    return best;
   }
 
   // Small unobtrusive pause button tucked in the top-right corner.

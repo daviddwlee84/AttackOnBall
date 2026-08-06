@@ -37,6 +37,12 @@ const game = new Phaser.Game({
     // in both orientations.
     autoCenter: Phaser.Scale.NO_CENTER,
   },
+  input: {
+    // Phaser creates ONE touch pointer by default, so a second finger was never
+    // tracked at all: playing with two thumbs, the hero froze the moment the
+    // first thumb lifted because nothing was following the one still down.
+    activePointers: 3,
+  },
   physics: {
     default: 'arcade',
     arcade: { gravity: { y: 0 }, debug: false },
