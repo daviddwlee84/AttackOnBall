@@ -10,10 +10,18 @@ permissions:
   pages: write
   id-token: write
 
-# Allow one concurrent deployment, cancelling in-progress runs.
+# Allow one deployment at a time, but never cancel one that is already running.
+#
+# This used to be `cancel-in-progress: true`, which is actively harmful for
+# Pages: cancelling a run mid-deploy leaves the Pages deployment itself wedged
+# (we ended up with several stuck in `deployment_cancelled`, and one in an empty
+# state that then rejected every later deployment with "due to in progress
+# deployment"). Because the deployment id *is* the commit SHA, a wedged one
+# can't simply be retried either. GitHub's own Pages starter workflow uses
+# `false` for exactly this reason.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
