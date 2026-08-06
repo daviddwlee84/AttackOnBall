@@ -66,7 +66,10 @@ export default class GameOverScene extends Phaser.Scene {
     // tap can't accidentally trigger them.
     this.ready = false;
     const gap = 150 * SCALE;
-    const playAgain = makeDoodleButton(this, 0, GAME_H * 0.86, '▶ Play Again', 0x4dabf7, () => {
+    // Restarting keeps you in whichever mode you were in; the label says which,
+    // so "Play Again" never silently drops you back to a ranked run.
+    const againLabel = this.admin ? '▶ Debug Again' : '▶ Play Again';
+    const playAgain = makeDoodleButton(this, 0, GAME_H * 0.86, againLabel, 0x4dabf7, () => {
       if (this.ready) this.restart();
     }).setDepth(72);
     const settings = makeDoodleButton(this, 0, GAME_H * 0.86, '⚙ Settings', 0xffd43b, () => {

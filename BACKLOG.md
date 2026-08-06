@@ -10,7 +10,7 @@ which changed what several of these cost. Effort is rough working days.
 | | Item | Effort | Why here |
 |---|---|---|---|
 | **P0** | [Fairness margin](#fairness-margin-not-just-survivability) | ~0.5 | One-line change to the reject condition (`alive === 0` → `alive < minAlive`) plus a setting and a tuning pass. Right now the guarantee barely engages below Crazy — measured 0 re-rolls on Easy/Medium vs 12–30 on Crazy — so "always dodgeable" is currently doing almost nothing on the difficulties most people play. Best value-per-line left. |
-| **P0** | [Drag / relative control](#alternative-control-schemes) | ~1 | The deepest remaining mobile UX flaw. "Walk toward your finger" means reaching the far edge requires *touching* the far edge — the invisible-wall fix removed the dead zone but not the ergonomics. Drag mode removes it structurally. `readDirection()` is a single choke point. Do drag first; the joystick is the bigger build and mainly matters for bullet-hell. |
+| **P0** | [Speed-capped drag / RTS move order](#alternative-control-schemes) | ~1 | The deepest remaining mobile UX flaw. "Walk toward your finger" means reaching the far edge requires *touching* the far edge — the invisible-wall fix removed the dead zone but not the ergonomics. Both of these remove it structurally while keeping `playerSpeed` as the cap, so they stay comparable with keyboard play and with the dodgeability analysis. `readDirection()` is a single choke point, though the RTS variant also needs a persistent target. Do these before the joystick, which is the bigger build and mainly matters for bullet-hell. |
 | **P1** | [搞笑模式 — catch the balls](#搞笑模式--catch-the-balls) | ~1 | Best fun-per-effort on the list. Invert `onHit()`, reuse the arena bar as a countdown, force `guaranteeDodgeable` off. Self-contained as a mode, so it can't regress normal play. |
 | **P2** | [Double-tap dash](#double-tap-dash) | ~1 | Cheaper than previously recorded — see the corrected note there. Partly pre-empted by the wider speed slider, so it's polish, not a fix. |
 | **P2** | [Power-ups](#power-ups--多種道具) | ~2 | Needs a timed-effects system that doesn't exist yet; that scaffolding is most of the cost. Good replayability once the modes above exist to use it. |
@@ -70,12 +70,36 @@ the rest is content.
 
 ## Alternative control schemes
 
-**Idea:** Two more input modes alongside today's "walk toward your finger":
+**Idea:** More input modes alongside today's "walk toward your finger":
+
 - **Virtual joystick** — a thumb stick in the bottom corner. Better for long
   sessions (no reaching across the screen) and the natural fit for bullet-hell.
 - **Drag/relative** — the hero tracks the *delta* of your finger rather than its
   absolute position, so you can steer from anywhere without your thumb covering
   the hero.
+- **Teleport / "指哪打哪"** — the hero snaps straight to the touched x. Feels
+  great, but it is *not comparable* to the other schemes: with no travel time
+  most dodges become trivial, and `safety.js` would be modelling a hero far
+  slower than the real one (the safe direction — see the rule at the top — so no
+  unfairness, just a wildly easier game). If built, it needs its own leaderboard
+  bucket, or to be unranked like Debug play.
+- **Speed-capped drag** — the same pointer-following, but the hero still moves at
+  `playerSpeed` toward the target instead of snapping. This is the honest version
+  of the idea above and stays comparable with keyboard play, because the speed
+  cap is exactly what the dodgeability analysis assumes.
+- **RTS / Dota-style move order** — tap a point and the hero walks there and
+  stops, no dragging required. One tap per commitment rather than continuous
+  contact, which is much less tiring than holding a finger down for a long run,
+  and it composes with the speed cap for free. Note it changes the *shape* of
+  the input: today `readDirection()` is re-evaluated every frame from live
+  pointer state, whereas this needs a persistent target that survives the
+  finger lifting — so the mode needs its own small state (targetX, cleared on
+  arrival or on a new tap) rather than just a different reading of the pointer.
+
+**Ranking note:** these are not equally strong. Anything that removes travel
+time (teleport) should be bucketed or unranked; anything that keeps
+`playerSpeed` as the cap (drag, RTS move order, joystick) can share the normal
+boards.
 
 **Where it plugs in:** `GameScene.readDirection()` (`src/scenes/GameScene.js`) is
 the single choke point — it already returns just -1/0/+1. A drag mode wants finer

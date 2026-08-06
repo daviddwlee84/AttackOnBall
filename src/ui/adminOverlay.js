@@ -145,12 +145,20 @@ export default class AdminOverlay {
     this.ballText.setText(rows.length ? ['BALLS (apex/cross are design units)', ...rows].join('\n') : '');
   }
 
+  // Called from the scene's shutdown handler, i.e. *during* teardown: by then
+  // physics.world is already null, and touching it threw — which aborted
+  // GameOverScene.restart() halfway, leaving the buttons looking dead when in
+  // fact they had fired. Everything here is optional cleanup (each scene builds
+  // its own Arcade world and camera, so nothing leaks into the next run), so it
+  // is all guarded.
   destroy() {
-    const world = this.scene.physics.world;
-    world.drawDebug = false;
-    if (world.debugGraphic) world.debugGraphic.setVisible(false);
-    this.g.destroy();
-    this.text.destroy();
-    this.ballText.destroy();
+    const world = this.scene.physics && this.scene.physics.world;
+    if (world) {
+      world.drawDebug = false;
+      if (world.debugGraphic) world.debugGraphic.setVisible(false);
+    }
+    for (const obj of [this.g, this.text, this.ballText]) {
+      if (obj && obj.scene) obj.destroy();
+    }
   }
 }
