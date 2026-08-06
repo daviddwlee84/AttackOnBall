@@ -8,15 +8,18 @@ import {
   SCALE,
   BALL_COLORS,
   PLAYER_SIZE,
+  EDGE_PAD,
   INVINCIBLE_MS,
   MAX_LIVES,
 } from '../config.js';
 import Player from '../objects/Player.js';
 import Arena from '../systems/arena.js';
 import Spawner from '../systems/spawner.js';
+import { onArenaResize, safeInsets } from '../systems/viewport.js';
 import { gameParams, setSettings } from '../settings.js';
 import { Sfx, isMuted, toggleMuted, startMusic, stopMusic } from '../audio.js';
 import DebugOverlay from '../ui/debugOverlay.js';
+import SafetyOverlay from '../ui/safetyOverlay.js';
 
 // The core gameplay loop: move the hero, dodge the bouncing balls, grab numbers,
 // and survive. Score climbs with time; every 10 points the arena recolors.
@@ -44,6 +47,10 @@ export default class GameScene extends Phaser.Scene {
     this.invincible = false;
     this.heartProgress = 0; // 0..10 toward the next heart (numbers + optional time)
 
+    // World bounds are seeded from the game config, which goes stale after any
+    // viewport resize — re-assert them before anything is placed.
+    this.physics.world.setBounds(0, 0, GAME_W, GAME_H);
+
     this.arena = new Arena(this);
 
     // Static ground body the balls and pickups land on (surface at GROUND_Y).
@@ -52,6 +59,14 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.existing(this.ground, true);
 
     this.player = new Player(this, GAME_W / 2);
+    // Hero hitbox geometry, published for systems/safety.js (which is
+    // deliberately Phaser-free and can't read the body itself). Mirrors
+    // Player's body: 0.7 x 0.85 of PLAYER_SIZE, centred on a sprite whose own
+    // centre sits half a PLAYER_SIZE above the water line.
+    this.playerHalfW = PLAYER_SIZE * 0.35;
+    this.playerTop = GROUND_Y - PLAYER_SIZE * 0.925;
+    this.playerBottom = GROUND_Y - PLAYER_SIZE * 0.075;
+    this.groundY = GROUND_Y;
     this.balls = this.physics.add.group();
     this.pickups = this.physics.add.group();
     this.spawner = new Spawner(this);
@@ -83,11 +98,28 @@ export default class GameScene extends Phaser.Scene {
     this.keyA = this.input.keyboard.addKey('A');
     this.keyD = this.input.keyboard.addKey('D');
 
+    // If the scene started while a finger/button was still down (tapping
+    // "Play Again" / "Restart"), that held pointer would otherwise be read as a
+    // move command and jerk the fresh hero toward the button. Ignore the pointer
+    // until it has been released once.
+    this.pointerArmed = !this.input.activePointer.isDown;
+    // Set while a press started on one of the HUD buttons, so dragging off it
+    // doesn't turn into a move command. Replaces the old blanket "ignore the
+    // top-right corner" rectangle, which was a real invisible wall.
+    this.uiHold = false;
+    this.input.on('pointerup', () => {
+      this.uiHold = false;
+    });
+
     // Pause: Esc / P keys, or the corner button.
     this.input.keyboard.on('keydown-ESC', this.pauseGame, this);
     this.input.keyboard.on('keydown-P', this.pauseGame, this);
     this.makePauseButton();
     this.makeMuteButton();
+    this.relayout();
+    // Re-fit (rather than restart) if the viewport changes mid-run.
+    const offResize = onArenaResize(() => this.relayout());
+    this.events.once('shutdown', offResize);
 
     // Background music plays only during a live game; stop it when the scene is
     // paused, restart on resume, and stop on teardown (death / restart).
@@ -105,6 +137,10 @@ export default class GameScene extends Phaser.Scene {
       setSettings({ debug: on });
     });
 
+    // Dodgeability corridor (F4) — see systems/safety.js.
+    this.safetyView = new SafetyOverlay(this);
+    this.input.keyboard.on('keydown-F4', () => this.safetyView.setVisible(!this.safetyView.visible));
+
     // Test hook (used by scripts/smoke-test.mjs) — harmless in normal play.
     if (typeof window !== 'undefined') window.__aob = this;
   }
@@ -112,10 +148,13 @@ export default class GameScene extends Phaser.Scene {
   readDirection() {
     if (this.cursors.left.isDown || this.keyA.isDown) return -1;
     if (this.cursors.right.isDown || this.keyD.isDown) return 1;
+    if (!this.pointerArmed) {
+      if (!this.input.activePointer.isDown) this.pointerArmed = true;
+      return 0;
+    }
+    if (this.uiHold) return 0;
     const p = this.input.activePointer;
     if (p.isDown) {
-      // Ignore taps in the top-right button corner (pause + mute) so they don't move.
-      if (p.worldX > GAME_W - 120 * SCALE && p.worldY < 90 * SCALE) return 0;
       const dx = p.worldX - this.player.x;
       if (Math.abs(dx) > 6 * SCALE) return Math.sign(dx);
     }
@@ -125,32 +164,32 @@ export default class GameScene extends Phaser.Scene {
   // Small unobtrusive pause button tucked in the top-right corner.
   makePauseButton() {
     const size = 40 * SCALE;
-    const x = GAME_W - size * 0.5 - 16 * SCALE;
-    const y = size * 0.5 + 16 * SCALE;
     const bg = this.add.rectangle(0, 0, size, size, 0xffffff, 0.85).setStrokeStyle(3 * SCALE, 0x2b2b2b);
     const barW = 6 * SCALE;
     const barH = 18 * SCALE;
     const b1 = this.add.rectangle(-5 * SCALE, 0, barW, barH, 0x2b2b2b);
     const b2 = this.add.rectangle(5 * SCALE, 0, barW, barH, 0x2b2b2b);
-    this.add.container(x, y, [bg, b1, b2]).setDepth(80);
+    this.pauseBtn = this.add.container(0, 0, [bg, b1, b2]).setDepth(80);
     // Make the background rectangle interactive (container-level hitAreas don't
     // hit-test reliably in Phaser).
     bg.setInteractive({ useHandCursor: true });
-    bg.on('pointerdown', () => this.pauseGame());
+    bg.on('pointerdown', () => {
+      this.uiHold = true;
+      this.pauseGame();
+    });
   }
 
   // Sound on/off toggle, just left of the pause button.
   makeMuteButton() {
     const size = 40 * SCALE;
-    const x = GAME_W - size * 0.5 - 16 * SCALE - (size + 12 * SCALE);
-    const y = size * 0.5 + 16 * SCALE;
     const bg = this.add.rectangle(0, 0, size, size, 0xffffff, 0.85).setStrokeStyle(3 * SCALE, 0x2b2b2b);
     const icon = this.add
       .text(0, 0, isMuted() ? '🔇' : '🔊', { fontSize: `${20 * SCALE}px` })
       .setOrigin(0.5);
-    this.add.container(x, y, [bg, icon]).setDepth(80);
+    this.muteBtn = this.add.container(0, 0, [bg, icon]).setDepth(80);
     bg.setInteractive({ useHandCursor: true });
     bg.on('pointerdown', () => {
+      this.uiHold = true;
       const muted = toggleMuted();
       icon.setText(muted ? '🔇' : '🔊');
       if (muted) {
@@ -162,6 +201,25 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  // Everything whose position depends on the arena width. Called at create() and
+  // again on a viewport change, so a mid-run resize doesn't strand the HUD.
+  relayout() {
+    const size = 40 * SCALE;
+    const right = GAME_W - size * 0.5 - 16 * SCALE - safeInsets().right;
+    const y = size * 0.5 + 16 * SCALE;
+    this.pauseBtn.setPosition(right, y);
+    this.muteBtn.setPosition(right - (size + 12 * SCALE), y);
+    this.arena.relayout();
+    this.layoutHearts();
+    this.physics.world.setBounds(0, 0, GAME_W, GAME_H);
+    this.player.refreshBounds();
+    this.playerMinX = EDGE_PAD;
+    this.playerMaxX = GAME_W - EDGE_PAD;
+    this.ground.setSize(GAME_W, GROUND_H);
+    this.ground.setPosition(GAME_W / 2, GROUND_Y + GROUND_H / 2);
+    this.ground.body.updateFromGameObject();
+  }
+
   pauseGame() {
     if (this.over || this.scene.isPaused()) return;
     this.scene.launch('PauseScene');
@@ -171,6 +229,7 @@ export default class GameScene extends Phaser.Scene {
   update(time, dtMs) {
     if (this.debug.visible) this.debug.update();
     if (this.over) return;
+    if (this.safetyView.visible) this.safetyView.update(dtMs);
     const dt = dtMs / 1000;
     this.elapsed += dt;
 
@@ -405,7 +464,13 @@ export default class GameScene extends Phaser.Scene {
     this.balls.getChildren().forEach((b) => b.body.setVelocity(0, 0).setAllowGravity(false));
     this.cameras.main.shake(250, 0.01);
     this.time.delayedCall(1000, () => {
-      this.scene.launch('GameOverScene', { score: this.score, mode: this.mode });
+      this.scene.launch('GameOverScene', {
+        score: this.score,
+        mode: this.mode,
+        // The difficulty this run was actually played at — settings could be
+        // changed before the game-over screen is dismissed.
+        difficulty: this.params.difficulty,
+      });
     });
   }
 }

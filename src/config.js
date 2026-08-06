@@ -5,9 +5,38 @@
 // because all spatial quantities scale together. Bump to 3 for extra sharpness.
 export const SCALE = 2;
 
-// Logical game size (landscape — wider arena gives the balls room to fly).
-export const GAME_W = 960 * SCALE;
+// Logical game size. The *height* is fixed (so hero size, gravity, bounce apex
+// heights and the HUD are identical everywhere); the *width* is derived from the
+// real viewport aspect ratio so Phaser's FIT scale mode has nothing left to
+// letterbox — the arena fills the screen edge to edge on any device.
+//
+// GAME_W is an `export let`: ES module live bindings mean every `import
+// { GAME_W }` site sees the updated value after recomputeArenaSize(), with no
+// plumbing. Read it at use time, never destructure it into a module-level const.
 export const GAME_H = 540 * SCALE;
+
+// Aspect clamp: 4:3 (old iPads) up to 21:9 (tall phones held sideways). Outside
+// this the layout stops making sense, so we letterbox again rather than distort.
+export const ASPECT_MIN = 4 / 3;
+export const ASPECT_MAX = 21 / 9;
+
+// Widest arena we will ever render. Textures sized once at this width (the
+// notebook grid) then simply overflow the right edge on narrower screens.
+export const MAX_GAME_W = Math.round((GAME_H * ASPECT_MAX) / 2) * 2;
+
+export let GAME_W = 960 * SCALE;
+
+// Recompute GAME_W from the viewport. Returns true if the width actually
+// changed (callers use that to decide whether to resize the canvas / re-lay-out).
+export function recomputeArenaSize(w, h) {
+  const vw = w || (typeof window !== 'undefined' ? window.innerWidth : 960);
+  const vh = h || (typeof window !== 'undefined' ? window.innerHeight : 540);
+  const aspect = Math.min(ASPECT_MAX, Math.max(ASPECT_MIN, vw / vh));
+  const next = Math.round((GAME_H * aspect) / 2) * 2; // keep it even
+  const changed = next !== GAME_W;
+  GAME_W = next;
+  return changed;
+}
 
 // Ground: the top edge of the blue "water" strip the hero stands on.
 export const GROUND_H = 64 * SCALE; // thickness of the water strip
@@ -15,6 +44,9 @@ export const GROUND_Y = GAME_H - GROUND_H; // y of the surface line
 
 // --- Player (visual size is fixed; movement speed is a runtime setting) ---
 export const PLAYER_SIZE = 56 * SCALE; // hero sprite is square-ish
+// How close the hero's *centre* may get to the arena edge. Small on purpose:
+// the whole point is that the far left/right of the screen stays reachable.
+export const EDGE_PAD = 6 * SCALE;
 
 // Ball sizes (fixed). Launch speed/angle, gravity, bounce, spawn rates and the
 // difficulty ramp are all runtime-configurable — see src/settings.js.

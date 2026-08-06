@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { GROUND_Y, PLAYER_SIZE, SCALE } from '../config.js';
+import { EDGE_PAD, GAME_H, GAME_W, GROUND_Y, PLAYER_SIZE, SCALE } from '../config.js';
 import { Sfx } from '../audio.js';
 
 // The green doodle hero. Moves only horizontally and stands on the water line.
@@ -19,6 +19,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     // Hit box a touch smaller than the sprite so near-misses feel fair.
     this.body.setSize(PLAYER_SIZE * 0.7, PLAYER_SIZE * 0.85);
     this.body.setOffset((this.width - PLAYER_SIZE * 0.7) / 2, (this.height - PLAYER_SIZE * 0.85) / 2);
+    this.refreshBounds();
     // Scale/rotate around the feet so squash & lean read as planted on the ground.
     this.setOrigin(0.5, 0.5);
 
@@ -41,6 +42,16 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.shadow = scene.add
       .ellipse(x, GROUND_Y + 2 * SCALE, PLAYER_SIZE * 0.9, PLAYER_SIZE * 0.26, 0x000000, 0.18)
       .setDepth(-1);
+  }
+
+  // Collide-with-world-bounds would stop the *body* at the arena edge, parking
+  // the hero's centre 0.35*PLAYER_SIZE short of it — a visible gap the player
+  // reads as an invisible wall. Give the body its own bounds rect, expanded by
+  // exactly that half-width, so the centre reaches the edge minus EDGE_PAD.
+  // Safe to widen: balls and pickups never use world bounds, only the ground body.
+  refreshBounds() {
+    const inset = PLAYER_SIZE * 0.35 - EDGE_PAD;
+    this.body.setBoundsRectangle(new Phaser.Geom.Rectangle(-inset, 0, GAME_W + 2 * inset, GAME_H));
   }
 
   // dir: -1 (left), 0 (idle), 1 (right). Only sets motion + intent; the visible

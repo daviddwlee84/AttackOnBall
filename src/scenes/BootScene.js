@@ -1,5 +1,14 @@
 import * as Phaser from 'phaser';
-import { GAME_W, GAME_H, PLAYER_SIZE, BALL_SIZES, BALL_COLORS, HERO_COLOR, PICKUP_VALUES } from '../config.js';
+import {
+  GAME_W,
+  GAME_H,
+  MAX_GAME_W,
+  PLAYER_SIZE,
+  BALL_SIZES,
+  BALL_COLORS,
+  HERO_COLOR,
+  PICKUP_VALUES,
+} from '../config.js';
 import { makeBall, makeHero, makeNumber, makeHeart, makeFragment, makePuff, makeGrid } from '../doodle.js';
 
 // Generates every doodle texture once at startup, then hands off to the menu.
@@ -37,7 +46,9 @@ export default class BootScene extends Phaser.Scene {
     makeHeart(this, 'heart-pickup');
     makeFragment(this, 'fragment');
     makePuff(this, 'puff');
-    makeGrid(this, 'grid', GAME_W, GAME_H);
+    // Drawn once at the widest arena we support and anchored at x=0, so a
+    // narrower screen (or a resize) just crops the right edge — no regeneration.
+    makeGrid(this, 'grid', MAX_GAME_W, GAME_H);
 
     this.scene.start('MenuScene');
   }

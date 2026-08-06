@@ -16,17 +16,31 @@ from both sides and bounce around the arena — get hit and it's game over. Surv
 as long as you can: the timer (your score) counts up continuously, and walking over
 the falling numbers adds those seconds straight to it. Every 10 seconds the arena
 recolors. Difficulty ramps up: balls spawn faster and more pile on the longer you
-last. Every ball is guaranteed to bounce above the hero's head, so it's always
-dodgeable.
+last, along curves that keep rising but taper rather than slamming into a ceiling.
+
+A ring on the ground marks where each ball will next land, so you can read the
+arena instead of guessing. And the spawner won't deal you an unwinnable hand: every
+launch is simulated against the balls already in play, and any launch that would
+leave you with nowhere to run is re-rolled (see **Always dodgeable** below).
 
 **Controls**
 
 - Desktop: `←` / `→` or `A` / `D`
 - Touch: tap or hold anywhere — the hero walks toward your finger
+- `Esc` / `P` pause · `F3` FPS overlay · `F4` dodgeability corridor
 
-**Settings (start screen)** — pick a difficulty preset (Easy / Medium / Hard / Crazy)
-or open **Advanced settings** to tune move speed, gravity, ball speed/angle, spawn
-rates and the difficulty ramp. Settings persist in the browser.
+**Settings (start screen)** — pick a difficulty preset (Easy / Medium / Hard / Crazy),
+browse the **🏆 Top 10** board for that exact difficulty and mode, or open
+**Advanced settings** to tune move speed, gravity, bounce height, arena crossing
+time, spawn rates and the difficulty ramp. Settings persist in the browser.
+
+**Screens and orientation** — the arena is sized to your viewport's aspect ratio, so
+it fills the screen edge to edge on anything from a 4:3 tablet to a 21:9 phone in
+landscape, and follows a window resize live. On a phone held in portrait, pressing
+Play requests fullscreen + a landscape orientation lock; where the browser won't
+allow that (iOS Safari), the page rotates itself instead, so you never get sent to a
+"please rotate your device" dead end. If it rotates the wrong way for how you hold
+the phone, flip **📱 Turn phone** in Advanced settings.
 
 ## Develop
 
@@ -35,28 +49,51 @@ npm install
 npm run dev       # local dev server with hot reload
 npm run build     # production build to dist/
 npm run preview   # serve the production build locally
-npm run smoke      # headless boot/play check against the preview server
+npm run logic     # headless checks of the Phaser-free game logic
+npm run smoke     # headless boot/play check against the preview server
 ```
 
-> `npm run smoke` requires the preview server running (`npm run preview`) and
-> installs Puppeteer on demand; it is optional and CI-style only.
+> `npm run logic` is plain Node and needs nothing running. `npm run smoke` requires
+> the preview server (`npm run preview`) and a Chrome via
+> `PUPPETEER_EXECUTABLE_PATH`; it is optional and CI-style only.
 
 ## Architecture
 
-- `src/config.js` — fixed constants (render `SCALE`, arena size, palettes, ball
-  sizes, pickup values). The whole game is authored at 960×540 and multiplied by
-  `SCALE` for a crisp hi-DPI buffer.
+- `src/config.js` — fixed constants (render `SCALE`, palettes, ball sizes, pickup
+  values) plus the arena size. The game is authored at a fixed 540-unit *height*
+  and a *dynamic* width derived from the viewport aspect, all multiplied by `SCALE`
+  for a crisp hi-DPI buffer. `GAME_W` is an `export let`: ES live bindings mean
+  every importer sees `recomputeArenaSize()`'s result, so read it at use time and
+  never copy it into a module-level constant.
 - `src/settings.js` — runtime-configurable, persisted settings: difficulty presets
   + advanced physics/difficulty params. `gameParams()` returns SCALE-applied values
-  the gameplay reads (via `scene.params`).
-- `src/ui/settingsPanel.js` — the HTML settings overlay on the menu screen.
+  the gameplay reads (via `scene.params`). Stored under `aob-settings-v2`; v1 blobs
+  are migrated for preferences only (the old physics keys describe a launch model
+  that no longer exists).
+- `src/orientation.js` — landscape by default: fullscreen + orientation lock, and a
+  CSS page-rotation fallback with matching patches to Phaser's pointer mapping and
+  parent measurement.
+- `src/ui/settingsPanel.js` — the HTML settings overlay on the menu screen;
+  `src/ui/nameEntry.js` — the leaderboard name prompt.
 - `src/doodle.js` — rough.js texture generators (hero expressions, balls, numbers,
   fragments, grid). All art is generated procedurally at boot — no image assets.
 - `src/scenes/` — `BootScene` (generates textures) → `MenuScene` (backdrop +
   settings panel) → `GameScene` (core loop) → `GameOverScene`.
-- `src/objects/` — `Player`, `Ball`, `NumberPickup`.
-- `src/systems/` — `spawner` (difficulty/density) and `arena` (background, timer
-  bar, palette shuffle).
+- `src/objects/` — `Player`, `Ball`, `NumberPickup`, `HeartPickup`.
+- `src/systems/` — `viewport` (arena sizing / resize broadcast), `arena`
+  (background, timer bar, palette shuffle), `spawner` (difficulty/density), plus
+  three deliberately **Phaser-free** modules covered by `npm run logic`:
+  - `ballistics` — launch planning. Balls are parameterised by *apex* (how far
+    their underside clears the water line) and *crossing time*, not speed+angle:
+    the old coupling meant Easy's slow balls arced the *lowest* and Crazy's fast
+    ones sailed over the arena without ever bouncing in it.
+  - `safety` — the **Always dodgeable** guarantee. Reachable-interval propagation
+    over a time×position grid: start from the hero's cell, widen it by how far they
+    could run each step, subtract everything a ball sweeps through, repeat. If the
+    set ever empties, the state is a forced death and the spawner re-rolls that
+    launch. ~0.1 ms per check. See the header comment for what it does and does not
+    promise. `F4` draws the corridor live.
+  - `leaderboard` — local top-10 per `mode:difficulty` bucket.
 
 The original vanilla-Canvas prototype lives in `deprecated/attack_on_ball_canvas.html`
 for reference; the tuned physics constants were ported from it.

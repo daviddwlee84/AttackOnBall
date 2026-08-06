@@ -10,21 +10,25 @@ import {
   PRESET_KEYS,
 } from '../settings.js';
 import { isMuted, setMuted } from '../audio.js';
+import { setRotationClockwise } from '../orientation.js';
+import { leaderboard } from '../systems/leaderboard.js';
 
-const BEST_KEY = 'aob-best';
-
-// Always-visible control(s).
-const COMMON = [{ key: 'playerSpeed', label: 'Move speed', min: 200, max: 600, step: 10 }];
+// Always-visible control(s). The move-speed range is deliberately wide — a
+// faster hero is the simplest way to make any preset feel fair.
+const COMMON = [{ key: 'playerSpeed', label: 'Move speed', min: 180, max: 900, step: 10 }];
 
 // Advanced / physics controls (hidden until expanded).
 const ADVANCED = [
   { key: 'gravity', label: 'Gravity', min: 400, max: 2000, step: 50 },
   { key: 'ballBounce', label: 'Ball bounciness', min: 0.7, max: 1.05, step: 0.01 },
-  { key: 'ballSpeedMin', label: 'Ball speed — min', min: 200, max: 1400, step: 20 },
-  { key: 'ballSpeedMax', label: 'Ball speed — max', min: 400, max: 2000, step: 20 },
-  { key: 'angleMin', label: 'Launch angle — min°', min: 20, max: 70, step: 1 },
-  { key: 'angleMax', label: 'Launch angle — max°', min: 50, max: 89, step: 1 },
+  { key: 'apexMin', label: 'Bounce height — min', min: 60, max: 320, step: 5 },
+  { key: 'apexMax', label: 'Bounce height — max', min: 80, max: 420, step: 5 },
+  { key: 'crossMin', label: 'Arena crossing — fastest (s)', min: 0.8, max: 6, step: 0.1 },
+  { key: 'crossMax', label: 'Arena crossing — slowest (s)', min: 1, max: 8, step: 0.1 },
+  { key: 'minBounces', label: 'Min bounces while crossing', min: 0.5, max: 6, step: 0.1 },
   { key: 'minApexClearance', label: 'Min bounce clearance', min: 0, max: 160, step: 5 },
+  { key: 'spawnMarginMin', label: 'Off-screen start — min', min: 0, max: 200, step: 10 },
+  { key: 'spawnMarginMax', label: 'Off-screen start — max', min: 20, max: 400, step: 10 },
   { key: 'spawnStart', label: 'Spawn interval start (s)', min: 0.5, max: 3, step: 0.1 },
   { key: 'spawnMin', label: 'Spawn interval floor (s)', min: 0.15, max: 1.5, step: 0.05 },
   { key: 'spawnRamp', label: 'Spawn speed-up / s', min: 0, max: 0.06, step: 0.002 },
@@ -43,6 +47,7 @@ const modeBtns = {};
 let diffLabel;
 let bestLabel;
 let soundBtn;
+let boardEl;
 
 // Best score is stored per mode; classic also reads the legacy 'aob-best' key.
 function readBest(mode) {
@@ -70,17 +75,21 @@ function fmtVal(spec, v) {
   return spec.pct ? `${Math.round(v * 100)}%` : fmt(v, spec.step);
 }
 
-// Generic compact On/Off toggle button bound to a boolean setting.
+// Generic compact toggle button bound to a boolean setting. `states` overrides
+// the On/Off wording (e.g. a direction), and `onChange` runs side effects for
+// settings that also need to be applied live.
 const toggleSyncers = [];
-function makeToggle(key, label) {
+function makeToggle(key, label, onChange, states = ['On', 'Off']) {
   const btn = el('button', 'aob-toggle', '');
   const sync = () => {
     const on = getSettings()[key];
-    btn.textContent = `${label} ${on ? 'On' : 'Off'}`;
+    btn.textContent = `${label} ${on ? states[0] : states[1]}`;
     btn.classList.toggle('off', !on);
   };
   btn.addEventListener('click', () => {
-    setSettings({ [key]: !getSettings()[key] });
+    const on = !getSettings()[key];
+    setSettings({ [key]: on });
+    if (onChange) onChange(on);
     sync();
   });
   toggleSyncers.push(sync);
@@ -129,6 +138,27 @@ function refresh() {
   syncSound();
   toggleSyncers.forEach((f) => f());
   refreshPresetHighlight();
+  refreshBoard();
+}
+
+// Top-10 for the currently selected mode + difficulty. Re-rendered from
+// refresh(), so it follows every preset / mode button press.
+function refreshBoard() {
+  if (!boardEl) return;
+  const s = getSettings();
+  const rows = leaderboard.top(leaderboard.bucketOf(s.mode, s.difficulty));
+  boardEl.textContent = '';
+  if (!rows.length) {
+    boardEl.appendChild(el('div', 'aob-board-empty', 'No scores yet for this setup.'));
+    return;
+  }
+  rows.forEach((entry, i) => {
+    const row = el('div', 'aob-board-row');
+    row.appendChild(el('span', 'aob-board-rank', `${i + 1}`));
+    row.appendChild(el('span', 'aob-board-name', entry.name));
+    row.appendChild(el('span', 'aob-board-score', entry.score.toFixed(1)));
+    boardEl.appendChild(row);
+  });
 }
 
 function syncSound() {
@@ -208,9 +238,25 @@ function buildOnce() {
   toggleRow.appendChild(makeToggle('musicOn', '🎵'));
   toggleRow.appendChild(makeToggle('tauntOn', '😜'));
   panel.appendChild(toggleRow);
+  const marker = makeToggle('landingMarker', '🎯 Landing spot');
+  marker.classList.add('wide');
+  panel.appendChild(marker);
   syncSound();
   panel.appendChild(makeSlider({ key: 'sfxVolume', label: 'SFX volume', min: 0, max: 1, step: 0.05, pct: true }));
   panel.appendChild(makeSlider({ key: 'musicVolume', label: 'Music volume', min: 0, max: 1, step: 0.05, pct: true }));
+
+  // Leaderboard for the selected mode + difficulty, behind a disclosure so the
+  // menu doesn't grow a ten-row table by default.
+  const boardToggle = el('button', 'aob-adv-toggle', '🏆 Top 10');
+  const boardSection = el('div', 'aob-board aob-hidden');
+  boardToggle.addEventListener('click', () => {
+    const closed = boardSection.classList.toggle('aob-hidden');
+    boardToggle.textContent = closed ? '🏆 Top 10' : '🏆 Top 10 ▴';
+    if (!closed) refreshBoard();
+  });
+  boardEl = boardSection;
+  panel.appendChild(boardToggle);
+  panel.appendChild(boardSection);
 
   const advToggle = el('button', 'aob-adv-toggle', '⚙ Advanced settings');
   const advSection = el('div', 'aob-advanced aob-hidden');
@@ -219,6 +265,19 @@ function buildOnce() {
     advToggle.textContent = open ? '⚙ Advanced settings' : '⚙ Advanced settings ▴';
   });
   advSection.appendChild(makeToggle('debug', '🐞 Show FPS'));
+  const fair = makeToggle('guaranteeDodgeable', '🛡 Always dodgeable');
+  fair.classList.add('wide');
+  advSection.appendChild(fair);
+  // Only meaningful on a touch device that may end up in software landscape
+  // (see src/orientation.js) — hidden on desktop, where it can never apply.
+  if (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches) {
+    const rot = makeToggle('rotateClockwise', '📱 Turn phone', (on) => setRotationClockwise(on), [
+      '↺ left',
+      '↻ right',
+    ]);
+    rot.classList.add('wide');
+    advSection.appendChild(rot);
+  }
   for (const spec of ADVANCED) advSection.appendChild(makeSlider(spec));
   const reset = el('button', 'aob-reset', '↺ Reset to defaults');
   reset.addEventListener('click', () => {
@@ -293,6 +352,14 @@ function injectStyle() {
     border-radius:12px;background:#fff;font-weight:bold;}
   .aob-adv-toggle{width:100%;padding:11px;margin-top:14px;font-size:15px;}
   .aob-advanced{margin-top:10px;padding-top:8px;border-top:2px dashed #b9ad8e;}
+  .aob-board.aob-hidden{display:none;}
+  .aob-board{margin-top:10px;padding-top:8px;border-top:2px dashed #b9ad8e;font-size:15px;}
+  .aob-board-row{display:flex;gap:10px;align-items:baseline;padding:4px 2px;border-bottom:1px dotted #d9cba8;}
+  .aob-board-row:nth-child(1){font-weight:bold;color:#e0991a;}
+  .aob-board-rank{width:22px;text-align:right;opacity:.6;}
+  .aob-board-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .aob-board-score{font-weight:bold;}
+  .aob-board-empty{opacity:.6;text-align:center;padding:8px 0;}
   .aob-reset{width:100%;padding:8px;margin-top:10px;font-size:13px;background:#ffe9ec;}
   .aob-play{width:100%;padding:15px;margin-top:16px;font-size:21px;background:#4dabf7;color:#08334d;}
   .aob-play:hover{filter:brightness(1.05);} .aob-play:active{transform:translateY(2px);}

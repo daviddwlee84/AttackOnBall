@@ -1,6 +1,8 @@
 import * as Phaser from 'phaser';
 import { GAME_W, GAME_H, GROUND_Y, GROUND_H, PALETTES, SCALE } from '../config.js';
 import { openSettings, closeSettings } from '../ui/settingsPanel.js';
+import { onArenaResize } from '../systems/viewport.js';
+import { ensureLandscape } from '../orientation.js';
 import { Sfx, unlockAudio } from '../audio.js';
 
 // Animated backdrop behind the HTML settings panel. The panel (presets +
@@ -34,13 +36,22 @@ export default class MenuScene extends Phaser.Scene {
     });
 
     openSettings({
-      onPlay: () => {
+      onPlay: async () => {
         unlockAudio(); // first user gesture — enable the AudioContext
         Sfx.ui();
         closeSettings();
+        // Fullscreen / orientation lock must be requested from inside the tap.
+        // Awaited so GameScene is built against the final arena size — starting
+        // first would create the hero and HUD at the pre-rotation width.
+        await ensureLandscape();
         this.scene.start('GameScene');
       },
     });
+
+    // The menu is just a backdrop, so a viewport change is cheapest to handle by
+    // rebuilding it wholesale.
+    const offResize = onArenaResize(() => this.scene.restart());
+    this.events.once('shutdown', offResize);
 
     // Make sure the panel can't linger if the scene is torn down another way.
     this.events.once('shutdown', closeSettings);

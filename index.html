@@ -71,8 +71,35 @@
         -webkit-user-select: none;
       }
 
-      /* Rotate-to-landscape prompt: only shown on portrait touch devices
-         (gated by `pointer: coarse` so a narrow desktop window never triggers it). */
+      /* Software landscape: when the device is held in portrait and the browser
+         won't let us lock the orientation (iOS Safari), we rotate the whole page
+         90° instead of asking the player to turn the phone. `position: fixed`
+         children resolve against the transformed body, so the settings panel and
+         banners come along for the ride. --aob-vw/--aob-vh are set from JS
+         (window.innerWidth/Height) rather than vw/vh units, which are unreliable
+         on mobile while the URL bar animates.
+         src/orientation.js owns the class and patches Phaser's pointer mapping. */
+      body.aob-rotated {
+        width: var(--aob-vh);
+        height: var(--aob-vw);
+        transform-origin: top left;
+      }
+      /* Which way the phone gets turned is not detectable when the OS rotation
+         lock is on, so both directions are available (settings toggle). */
+      body.aob-rotated.aob-cw {
+        transform: rotate(90deg) translateY(-100%);
+      }
+      body.aob-rotated.aob-ccw {
+        transform: rotate(-90deg) translateX(-100%);
+      }
+      body.aob-rotated #game {
+        width: var(--aob-vh);
+        height: var(--aob-vw);
+      }
+
+      /* Rotate-to-landscape prompt: last-resort fallback, shown only when
+         src/orientation.js could neither lock the orientation nor rotate the
+         page itself (body.aob-needs-rotate). */
       #aob-rotate {
         display: none;
         position: fixed;
@@ -111,7 +138,7 @@
         }
       }
       @media (orientation: portrait) and (pointer: coarse) {
-        #aob-rotate {
+        body.aob-needs-rotate #aob-rotate {
           display: flex;
         }
       }

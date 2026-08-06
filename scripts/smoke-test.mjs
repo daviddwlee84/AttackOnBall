@@ -12,6 +12,9 @@ const browser = await puppeteer.launch({
   args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'],
 });
 const page = await browser.newPage();
+// Explicit landscape viewport: the arena's design width now follows the
+// viewport aspect, and Puppeteer's 800x600 default is below the 4:3 floor.
+await page.setViewport({ width: 1280, height: 720 });
 
 const errors = [];
 page.on('console', (m) => {
@@ -55,7 +58,9 @@ await page.evaluate(() => {
       const s = window.__aob;
       if (!s) return;
       window.__ranGame = true;
-      if (!s.balls || s.over) return;
+      // Keep counting after death: the balls are frozen in place, not culled,
+      // so they're still evidence that spawning and flight worked.
+      if (!s.balls) return;
       const balls = s.balls.getChildren();
       const inF = balls.filter((b) => b.x > 80 && b.x < s.scale.width - 80).length;
       window.__peakTotal = Math.max(window.__peakTotal, balls.length);
@@ -97,7 +102,34 @@ const ballStats = await page.evaluate(() => {
   return { ran: window.__ranGame, total: window.__peakTotal, inField: window.__peakInField };
 });
 
+// Restart with the pointer still held down: the hero must not budge. Guards the
+// "restart makes the hero jerk sideways" regression, where the held pointer from
+// tapping Play Again was read as a move command by the freshly started scene.
+const held = await page.evaluate(() => {
+  const s = window.__aob;
+  const b = s.scale.canvasBounds;
+  const d = s.scale.displayScale;
+  return { x: b.x + s.scale.width * 0.62 / d.x, y: b.y + s.scale.height * 0.62 / d.y };
+});
+await page.mouse.move(held.x, held.y);
+await page.mouse.down();
+await page.evaluate(() => window.__aob.scene.start('GameScene'));
+await new Promise((r) => setTimeout(r, 300));
+const restartSamples = [];
+for (let i = 0; i < 8; i++) {
+  restartSamples.push(await page.evaluate(() => window.__aob?.player?.x ?? null));
+  await new Promise((r) => setTimeout(r, 60));
+}
+await page.mouse.up();
+const xs = restartSamples.filter((v) => v != null);
+const restartDrift = xs.length ? Math.max(...xs) - Math.min(...xs) : -1;
+
 await browser.close();
+
+if (restartDrift !== 0) {
+  console.error(`SMOKE FAIL — hero drifted ${restartDrift.toFixed(1)}px after restart with the pointer held`);
+  process.exit(1);
+}
 
 if (!ballStats.ran) {
   console.error('SMOKE FAIL — game never started');

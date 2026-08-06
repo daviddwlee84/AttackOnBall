@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_W, GAME_H, GROUND_Y, GROUND_H, PALETTES, SCALE } from '../config.js';
+import { safeInsets } from './viewport.js';
 import { Sfx } from '../audio.js';
 
 // Tween a value from one packed-hex color to another, calling apply(color) each
@@ -39,23 +40,23 @@ export default class Arena {
       .setDepth(-18);
 
     // Top progress bar (fills continuously across each 10-second segment).
-    const margin = 40 * SCALE;
-    const barW = GAME_W - 2 * margin;
-    this.barW = barW;
     this.barInset = 2 * SCALE;
-    scene.add.rectangle(margin, 24 * SCALE, barW, 18 * SCALE, 0x000000, 0.12).setOrigin(0, 0.5).setDepth(40);
+    this.barShadow = scene.add
+      .rectangle(0, 24 * SCALE, 10, 18 * SCALE, 0x000000, 0.12)
+      .setOrigin(0, 0.5)
+      .setDepth(40);
     this.barBg = scene.add
-      .rectangle(margin, 24 * SCALE, barW, 18 * SCALE, 0xffffff, 0.6)
+      .rectangle(0, 24 * SCALE, 10, 18 * SCALE, 0xffffff, 0.6)
       .setOrigin(0, 0.5)
       .setStrokeStyle(3 * SCALE, 0x2b2b2b)
       .setDepth(41);
     this.barFill = scene.add
-      .rectangle(margin + this.barInset, 24 * SCALE, 0, 12 * SCALE, p.water)
+      .rectangle(0, 24 * SCALE, 0, 12 * SCALE, p.water)
       .setOrigin(0, 0.5)
       .setDepth(42);
 
     this.scoreText = scene.add
-      .text(GAME_W / 2, 44 * SCALE, '0.0', {
+      .text(0, 44 * SCALE, '0.0', {
         fontFamily: '"Comic Sans MS", "Marker Felt", sans-serif',
         fontSize: `${32 * SCALE}px`,
         color: '#2b2b2b',
@@ -63,11 +64,38 @@ export default class Arena {
       })
       .setOrigin(0.5, 0)
       .setDepth(43);
+
+    this.frac = 0;
+    this.relayout();
+  }
+
+  // Re-fit everything that depends on the arena width. Called once at build time
+  // and again whenever the viewport (and therefore GAME_W) changes mid-run.
+  relayout() {
+    const inset = safeInsets();
+    const margin = 40 * SCALE + Math.max(inset.left, inset.right);
+    this.barW = GAME_W - 2 * margin;
+
+    // The grid texture is drawn at MAX_GAME_W and anchored at x=0, so it just
+    // overflows the right edge on narrower arenas — nothing to resize.
+    this.bg.setSize(GAME_W, GAME_H);
+    this.water.setSize(GAME_W, GROUND_H);
+
+    // setSize (not `.width =`): barBg has a stroke, whose path is only rebuilt
+    // by setSize. barFill is fill-only, so setBar's `.width =` stays fine.
+    for (const bar of [this.barShadow, this.barBg]) {
+      bar.setPosition(margin, 24 * SCALE);
+      bar.setSize(this.barW, 18 * SCALE);
+    }
+    this.barFill.x = margin + this.barInset;
+    this.scoreText.x = GAME_W / 2;
+    this.setBar(this.frac);
   }
 
   // frac: 0..1 progress through the current 10-second segment.
   setBar(frac) {
-    this.barFill.width = Phaser.Math.Clamp(frac, 0, 1) * (this.barW - 2 * this.barInset);
+    this.frac = Phaser.Math.Clamp(frac, 0, 1);
+    this.barFill.width = this.frac * (this.barW - 2 * this.barInset);
   }
 
   setScore(score) {

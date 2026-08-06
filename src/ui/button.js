@@ -8,6 +8,11 @@ import { SCALE } from '../config.js';
 // container a custom hitArea — a container-level Geom hitArea does not
 // hit-test reliably in Phaser (the pointer never registers as "over"), which
 // silently breaks clicks.
+//
+// NOTE: the callback fires on pointer*up*, not pointerdown. Firing on down
+// started the next scene while the finger was still held, and GameScene's
+// "walk toward the finger" control then read that held pointer and jerked the
+// freshly spawned hero toward the button.
 export function makeDoodleButton(scene, x, y, label, color, onClick) {
   const text = scene.add
     .text(0, 0, label, {
@@ -26,9 +31,21 @@ export function makeDoodleButton(scene, x, y, label, color, onClick) {
 
   const btn = scene.add.container(x, y, [bg, text]);
   bg.setInteractive({ useHandCursor: true });
+
+  let armed = false;
   bg.on('pointerover', () => btn.setScale(1.04));
-  bg.on('pointerout', () => btn.setScale(1));
-  if (onClick) bg.on('pointerdown', onClick);
+  bg.on('pointerout', () => {
+    armed = false;
+    btn.setScale(1);
+  });
+  bg.on('pointerdown', () => {
+    armed = true;
+  });
+  bg.on('pointerup', () => {
+    if (!armed) return; // press started elsewhere and was dragged onto us
+    armed = false;
+    if (onClick) onClick();
+  });
 
   btn.bg = bg;
   return btn;

@@ -1,5 +1,8 @@
 import * as Phaser from 'phaser';
-import { GAME_W, GAME_H } from './config.js';
+import { GAME_W, GAME_H, recomputeArenaSize } from './config.js';
+import { initViewport } from './systems/viewport.js';
+import { initOrientation } from './orientation.js';
+import { getSettings } from './settings.js';
 import BootScene from './scenes/BootScene.js';
 import MenuScene from './scenes/MenuScene.js';
 import GameScene from './scenes/GameScene.js';
@@ -13,7 +16,11 @@ initInstallPrompt();
 // storage pressure. Best-effort — granted based on engagement / install state.
 if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
 
-new Phaser.Game({
+// Match the design surface to this screen's aspect *before* the game is built,
+// so the very first frame is already full-bleed.
+recomputeArenaSize();
+
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   width: GAME_W,
@@ -21,7 +28,12 @@ new Phaser.Game({
   backgroundColor: '#fdf6e3',
   scale: {
     mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    // NO_CENTER on purpose: #game is already a centering flexbox, and Phaser's
+    // autoCenter computes its margins from canvas.getBoundingClientRect() —
+    // which is the *rotated* box under software landscape (src/orientation.js)
+    // and would fling the canvas off-screen. Letting CSS centre it is correct
+    // in both orientations.
+    autoCenter: Phaser.Scale.NO_CENTER,
   },
   physics: {
     default: 'arcade',
@@ -29,3 +41,6 @@ new Phaser.Game({
   },
   scene: [BootScene, MenuScene, GameScene, PauseScene, GameOverScene],
 });
+
+initOrientation(game, getSettings().rotateClockwise);
+initViewport(game);
