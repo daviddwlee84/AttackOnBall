@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_W, GAME_H, MAX_GAME_W, SCALE } from '../config.js';
 import { makeDoodleButton } from '../ui/button.js';
 import { onArenaResize } from '../systems/viewport.js';
+import { releaseLandscape } from '../orientation.js';
 
 // Overlay launched on top of a paused GameScene. Esc/P (or Resume) unpauses.
 export default class PauseScene extends Phaser.Scene {
@@ -29,6 +30,7 @@ export default class PauseScene extends Phaser.Scene {
       this.scene.start('GameScene');
     });
     const menu = makeDoodleButton(this, 0, GAME_H * 0.79, '⚙ Main Menu', 0xffd43b, () => {
+      releaseLandscape(); // read the HTML settings panel upright — see GameOverScene
       this.scene.stop('GameScene');
       this.scene.stop();
       this.scene.start('MenuScene');

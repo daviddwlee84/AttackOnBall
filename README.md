@@ -18,10 +18,14 @@ the falling numbers adds those seconds straight to it. Every 10 seconds the aren
 recolors. Difficulty ramps up: balls spawn faster and more pile on the longer you
 last, along curves that keep rising but taper rather than slamming into a ceiling.
 
-A ring on the ground marks where each ball will next land, so you can read the
-arena instead of guessing. And the spawner won't deal you an unwinnable hand: every
-launch is simulated against the balls already in play, and any launch that would
-leave you with nowhere to run is re-rolled (see **Always dodgeable** below).
+A mark on the ground shows where each ball will next land, so you can read the
+arena instead of guessing — by default it's the ball's own shadow sliding into
+place early, with a louder coloured ring available instead (**🎯 Landing spot**
+cycles Off / Shadow / Ring). Most balls trace a similar arc, but every so often
+one is lobbed high enough to leave the top of the screen before coming back down.
+And the spawner won't deal you an unwinnable hand: every launch is simulated
+against the balls already in play, and any launch that would leave you with
+nowhere to run is re-rolled (see **Always dodgeable** below).
 
 **Controls**
 
@@ -38,9 +42,11 @@ time, spawn rates and the difficulty ramp. Settings persist in the browser.
 it fills the screen edge to edge on anything from a 4:3 tablet to a 21:9 phone in
 landscape, and follows a window resize live. On a phone held in portrait, pressing
 Play requests fullscreen + a landscape orientation lock; where the browser won't
-allow that (iOS Safari), the page rotates itself instead, so you never get sent to a
-"please rotate your device" dead end. If it rotates the wrong way for how you hold
-the phone, flip **📱 Turn phone** in Advanced settings.
+allow that (iOS Safari), the game surface rotates itself instead — full-bleed
+landscape, no black bars, no "please rotate your device" dead end. The settings
+panel stays upright either way, so you can set a run up in portrait and still play
+it in landscape. If it rotates the wrong way for how you hold the phone, flip
+**📱 Turn phone** in Advanced settings.
 
 ## Develop
 

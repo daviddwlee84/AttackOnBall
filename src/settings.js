@@ -24,11 +24,14 @@ const LEGACY_KEY = 'aob-settings';
 // minBounces is a floor on how many times a ball must land while crossing the
 // arena. It's what stops the long-run pressure ramp from turning fast balls
 // back into harmless fly-overs.
+// lobChance is how often a ball is drawn from the tall arc band instead
+// (see planLaunch) — kept low on Crazy, where there are already plenty of balls
+// competing for attention.
 export const PRESETS = {
-  easy:   { playerSpeed: 400, apexMin: 150, apexMax: 240, crossMin: 3.6, crossMax: 5.0, minBounces: 3.0, spawnStart: 2.2,  spawnMin: 0.8,  spawnRamp: 0.012, doubleAfter: 35, tripleAfter: 80, densityRamp: 55 },
-  medium: { playerSpeed: 380, apexMin: 110, apexMax: 190, crossMin: 2.4, crossMax: 3.4, minBounces: 2.2, spawnStart: 1.6,  spawnMin: 0.35, spawnRamp: 0.022, doubleAfter: 18, tripleAfter: 45, densityRamp: 35 },
-  hard:   { playerSpeed: 380, apexMin: 95,  apexMax: 170, crossMin: 1.9, crossMax: 2.7, minBounces: 1.9, spawnStart: 1.2,  spawnMin: 0.28, spawnRamp: 0.03,  doubleAfter: 10, tripleAfter: 28, densityRamp: 25 },
-  crazy:  { playerSpeed: 360, apexMin: 90,  apexMax: 150, crossMin: 1.5, crossMax: 2.2, minBounces: 1.6, spawnStart: 0.85, spawnMin: 0.2,  spawnRamp: 0.045, doubleAfter: 5,  tripleAfter: 14, densityRamp: 14 },
+  easy:   { playerSpeed: 400, apexMin: 150, apexMax: 240, crossMin: 3.6, crossMax: 5.0, minBounces: 3.0, lobChance: 0.15, spawnStart: 2.2,  spawnMin: 0.8,  spawnRamp: 0.012, doubleAfter: 35, tripleAfter: 80, densityRamp: 55 },
+  medium: { playerSpeed: 380, apexMin: 110, apexMax: 190, crossMin: 2.4, crossMax: 3.4, minBounces: 2.2, lobChance: 0.12, spawnStart: 1.6,  spawnMin: 0.35, spawnRamp: 0.022, doubleAfter: 18, tripleAfter: 45, densityRamp: 35 },
+  hard:   { playerSpeed: 380, apexMin: 95,  apexMax: 170, crossMin: 1.9, crossMax: 2.7, minBounces: 1.9, lobChance: 0.10, spawnStart: 1.2,  spawnMin: 0.28, spawnRamp: 0.03,  doubleAfter: 10, tripleAfter: 28, densityRamp: 25 },
+  crazy:  { playerSpeed: 360, apexMin: 90,  apexMax: 150, crossMin: 1.5, crossMax: 2.2, minBounces: 1.6, lobChance: 0.08, spawnStart: 0.85, spawnMin: 0.2,  spawnRamp: 0.045, doubleAfter: 5,  tripleAfter: 14, densityRamp: 14 },
 };
 
 // The keys a preset controls (so the panel knows what to refresh / compare).
@@ -42,6 +45,13 @@ const ADVANCED_DEFAULTS = {
   // the old 40 because the dodgeability guarantee (systems/safety.js) now does
   // the real work — this is just a physical sanity bound.
   minApexClearance: 20,
+  // Ceiling for a lobbed arc, in design px above the water line. GROUND_Y is
+  // 476, so anything past that leaves the top of the screen — intentional: a
+  // ball briefly disappearing overhead is the point.
+  lobApexMax: 640,
+  // Lobs only have to land inside the arena once; demanding the preset's
+  // 2-3 bounces would stretch their crossing time to a crawl.
+  lobMinBounces: 1,
   // How far off-screen balls start. Randomised per ball, which also randomises
   // where in its bounce cycle it enters the arena.
   spawnMarginMin: 40,
@@ -65,7 +75,10 @@ const PREF_DEFAULTS = {
   musicVolume: 0.35, // 0..1
   musicOn: true, // background music toggle
   tauntOn: true, // gloating/幸災樂禍 reaction toggle
-  landingMarker: true, // show where each ball will next hit the ground
+  // Where each ball will next hit the ground: 'off' | 'shadow' | 'ring'.
+  // 'shadow' is the default — it reuses the ball's own ground shadow, so it
+  // reads as part of the scene instead of as an overlay.
+  landingMarkerMode: 'shadow',
   playerName: '', // remembered for leaderboard entries
   debug: false, // show the FPS / debug overlay
   // Software-landscape (see src/orientation.js): which way the page is rotated
@@ -84,7 +97,16 @@ let current = load();
 function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-    if (saved && typeof saved === 'object') return { ...defaults(), ...saved };
+    if (saved && typeof saved === 'object') {
+      const out = { ...defaults(), ...saved };
+      // The landing marker used to be a boolean. Anyone who had deliberately
+      // turned it off should stay off rather than have it reappear.
+      if (saved.landingMarkerMode === undefined && saved.landingMarker === false) {
+        out.landingMarkerMode = 'off';
+      }
+      delete out.landingMarker;
+      return out;
+    }
     return migrateV1();
   } catch {
     /* ignore corrupt storage */
@@ -143,6 +165,7 @@ const SPATIAL = [
   'gravity',
   'apexMin',
   'apexMax',
+  'lobApexMax',
   'minApexClearance',
   'spawnMarginMin',
   'spawnMarginMax',

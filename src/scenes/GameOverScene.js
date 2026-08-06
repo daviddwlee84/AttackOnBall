@@ -6,6 +6,7 @@ import { leaderboard } from '../systems/leaderboard.js';
 import { getSettings, setSettings } from '../settings.js';
 import { onArenaResize } from '../systems/viewport.js';
 import { setUpdatePromptVisible } from '../pwa-update.js';
+import { releaseLandscape } from '../orientation.js';
 
 // Best score is tracked per mode (lives mode is more forgiving, so it would
 // otherwise inflate the classic best). Classic migrates the legacy 'aob-best'.
@@ -140,6 +141,11 @@ export default class GameOverScene extends Phaser.Scene {
 
   toMenu() {
     closeNameEntry();
+    // Settings are an HTML form — hand the device back its real orientation so
+    // they're read upright. Done here rather than in MenuScene.create(), which
+    // also runs on the scene restart that a rotation change itself triggers
+    // (rotate -> resize broadcast -> menu restart -> release -> un-rotate).
+    releaseLandscape();
     this.scene.stop('GameScene');
     this.scene.stop();
     this.scene.start('MenuScene');

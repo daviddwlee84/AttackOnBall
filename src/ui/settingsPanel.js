@@ -26,6 +26,9 @@ const ADVANCED = [
   { key: 'crossMin', label: 'Arena crossing — fastest (s)', min: 0.8, max: 6, step: 0.1 },
   { key: 'crossMax', label: 'Arena crossing — slowest (s)', min: 1, max: 8, step: 0.1 },
   { key: 'minBounces', label: 'Min bounces while crossing', min: 0.5, max: 6, step: 0.1 },
+  { key: 'lobChance', label: 'High lob chance', min: 0, max: 0.5, step: 0.01, pct: true },
+  { key: 'lobApexMax', label: 'Lob height ceiling', min: 250, max: 900, step: 10 },
+  { key: 'lobMinBounces', label: 'Lob min bounces', min: 0.5, max: 3, step: 0.1 },
   { key: 'minApexClearance', label: 'Min bounce clearance', min: 0, max: 160, step: 5 },
   { key: 'spawnMarginMin', label: 'Off-screen start — min', min: 0, max: 200, step: 10 },
   { key: 'spawnMarginMax', label: 'Off-screen start — max', min: 20, max: 400, step: 10 },
@@ -90,6 +93,28 @@ function makeToggle(key, label, onChange, states = ['On', 'Off']) {
     const on = !getSettings()[key];
     setSettings({ [key]: on });
     if (onChange) onChange(on);
+    sync();
+  });
+  toggleSyncers.push(sync);
+  sync();
+  return btn;
+}
+
+// Same button shape as makeToggle, but cycles through N named values instead of
+// two. `states` is [{ value, label }, ...]; the first is treated as the "off"
+// state and rendered dimmed.
+function makeCycle(key, label, states) {
+  const btn = el('button', 'aob-toggle', '');
+  const sync = () => {
+    const v = getSettings()[key];
+    const i = Math.max(0, states.findIndex((s) => s.value === v));
+    btn.textContent = `${label} ${states[i].label}`;
+    btn.classList.toggle('off', i === 0);
+  };
+  btn.addEventListener('click', () => {
+    const v = getSettings()[key];
+    const i = Math.max(0, states.findIndex((s) => s.value === v));
+    setSettings({ [key]: states[(i + 1) % states.length].value });
     sync();
   });
   toggleSyncers.push(sync);
@@ -238,7 +263,11 @@ function buildOnce() {
   toggleRow.appendChild(makeToggle('musicOn', '🎵'));
   toggleRow.appendChild(makeToggle('tauntOn', '😜'));
   panel.appendChild(toggleRow);
-  const marker = makeToggle('landingMarker', '🎯 Landing spot');
+  const marker = makeCycle('landingMarkerMode', '🎯 Landing spot', [
+    { value: 'off', label: 'Off' },
+    { value: 'shadow', label: 'Shadow' },
+    { value: 'ring', label: 'Ring' },
+  ]);
   marker.classList.add('wide');
   panel.appendChild(marker);
   syncSound();

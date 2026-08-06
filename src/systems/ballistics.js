@@ -92,8 +92,17 @@ export function planLaunch({ params: p, radius, elapsed = 0, arenaW, groundY, pl
   // free phase variety, instead of every ball arriving at the same point.
   const margin = lerp(p.spawnMarginMin, p.spawnMarginMax, rng());
 
+  // Occasional high lob. Sampling apex from one narrow band makes every ball
+  // trace more or less the same arc, which reads as monotonous however varied
+  // the speeds are. A small chance of drawing from a much taller band —
+  // deliberately allowed to exceed the top of the screen — restores the sense
+  // that any given ball could do something different.
+  const lob = rng() < (p.lobChance || 0);
+  const apexLo = lob ? p.apexMax : p.apexMin;
+  const apexHi = lob ? Math.max(p.lobApexMax, p.apexMax) : p.apexMax;
+
   // Hard floor on the arc so a ball can never be physically un-duckable.
-  const apex = Math.max(lerp(p.apexMin, p.apexMax, rng()), playerSize + p.minApexClearance);
+  const apex = Math.max(lerp(apexLo, apexHi, rng()), playerSize + p.minApexClearance);
   const vy = -apexToVy(apex, p.gravity);
 
   // crossTime is defined over the arena width, so the margin costs extra
@@ -103,7 +112,13 @@ export function planLaunch({ params: p, radius, elapsed = 0, arenaW, groundY, pl
   // until balls once again cross in a single arc and stop being a threat at all
   // — exactly the "Crazy balls just fly over the field" problem. Past this
   // point extra difficulty has to come from ball *count*, not raw speed.
-  const minCross = p.minBounces * bouncePeriod(apex, p.gravity);
+  //
+  // A lob keeps a *lower* bounce floor than a normal ball: its arc is already
+  // several seconds long, so demanding the preset's 2-3 bounces would drag the
+  // crossing out to something sluggish. One bounce is the actual requirement —
+  // the ball must land inside the arena rather than sail clean over it.
+  const minBounces = lob ? p.lobMinBounces : p.minBounces;
+  const minCross = minBounces * bouncePeriod(apex, p.gravity);
   const crossTime = Math.max(lerp(p.crossMin, p.crossMax, rng()) / pressureRamp(p, elapsed), minCross);
   const vx = (arenaW / crossTime) * dir;
 
@@ -116,5 +131,6 @@ export function planLaunch({ params: p, radius, elapsed = 0, arenaW, groundY, pl
     apex,
     crossTime,
     dir,
+    lob,
   };
 }

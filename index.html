@@ -79,22 +79,30 @@
          (window.innerWidth/Height) rather than vw/vh units, which are unreliable
          on mobile while the URL bar animates.
          src/orientation.js owns the class and patches Phaser's pointer mapping. */
-      body.aob-rotated {
+      /* Rotate ONLY the game surface, about its own centre, and take it out of
+         flow with position:fixed.
+         Rotating <body> instead (the obvious approach) gives it a landscape
+         layout box inside a portrait viewport — the document then overflows,
+         and iOS Safari resolves that by scaling the whole page down, so the
+         canvas rendered at roughly half size inside thick black borders.
+         Keeping the document upright also means the HTML settings panel stays
+         readable in portrait while the game itself plays landscape, which is
+         the behaviour we actually want. */
+      body.aob-rotated #game {
+        position: fixed;
+        top: 50%;
+        left: 50%;
         width: var(--aob-vh);
         height: var(--aob-vw);
-        transform-origin: top left;
+        transform-origin: center center;
       }
       /* Which way the phone gets turned is not detectable when the OS rotation
          lock is on, so both directions are available (settings toggle). */
-      body.aob-rotated.aob-cw {
-        transform: rotate(90deg) translateY(-100%);
+      body.aob-rotated.aob-cw #game {
+        transform: translate(-50%, -50%) rotate(90deg);
       }
-      body.aob-rotated.aob-ccw {
-        transform: rotate(-90deg) translateX(-100%);
-      }
-      body.aob-rotated #game {
-        width: var(--aob-vh);
-        height: var(--aob-vw);
+      body.aob-rotated.aob-ccw #game {
+        transform: translate(-50%, -50%) rotate(-90deg);
       }
 
       /* Rotate-to-landscape prompt: last-resort fallback, shown only when

@@ -27,10 +27,13 @@ const GRAVITY = 1000;
 const PLAYER_SIZE = 56;
 const GROUND_Y = 476;
 const ARENA_W = 960;
+const SCREEN_TOP = GROUND_Y; // a ball whose apex exceeds this leaves the screen
 const ADVANCED = {
   gravity: GRAVITY,
   ballBounce: 1,
   minApexClearance: 20,
+  lobApexMax: 640,
+  lobMinBounces: 1,
   spawnMarginMin: 40,
   spawnMarginMax: 160,
   speedRamp: 0.006,
@@ -39,6 +42,15 @@ const ADVANCED = {
 
 // Deterministic sampler so "min", "max" and "middle" rolls are all exercised.
 const fixedRng = (v) => () => v;
+
+// planLaunch draws in a fixed order: dir, margin, lob roll, apex, crossTime.
+// A constant rng ties those together (a successful lob roll needs a low value,
+// which then also picks the *bottom* of the lob band), so corner cases need a
+// sequenced source that returns a different value per draw.
+const seqRng = (values) => {
+  let i = 0;
+  return () => values[Math.min(i++, values.length - 1)];
+};
 
 console.log('\nballistics — per-preset flight envelope');
 // Minimum apex, in hero-heights — the "Easy balls must arc high enough to duck"
@@ -53,7 +65,8 @@ const EXPECT = {
 
 for (const [name, preset] of Object.entries(PRESETS)) {
   const params = { ...ADVANCED, ...preset };
-  let worstBounces = Infinity;
+  let worstBounces = Infinity; // normal balls only
+  let worstLobBounces = Infinity; // lobs are held to their own lower floor
   let worstApex = Infinity;
   let apexOk = true;
   // Sample the whole random range, including the pressure ramp at t=0 and t=180.
@@ -70,8 +83,12 @@ for (const [name, preset] of Object.entries(PRESETS)) {
           rng: fixedRng(v),
         });
         const period = bouncePeriod(plan.apex, GRAVITY);
-        const crossing = ARENA_W / Math.abs(plan.vx);
-        worstBounces = Math.min(worstBounces, crossing / period);
+        const bounces = ARENA_W / Math.abs(plan.vx) / period;
+        if (plan.lob) {
+          worstLobBounces = Math.min(worstLobBounces, bounces);
+        } else {
+          worstBounces = Math.min(worstBounces, bounces);
+        }
         worstApex = Math.min(worstApex, plan.apex);
         if (plan.apex < PLAYER_SIZE + params.minApexClearance - 1e-6) apexOk = false;
         // The ball must start off-screen and be launched upward.
@@ -86,12 +103,58 @@ for (const [name, preset] of Object.entries(PRESETS)) {
     worstBounces >= preset.minBounces - 1e-6,
     `worst ${worstBounces.toFixed(2)}`
   );
+  // Probe the floor of the *normal* band explicitly. The fixed sweep can't:
+  // a low draw now also triggers the lob roll, so it never reaches apexMin.
+  const lowest = planLaunch({
+    params, radius: 26, elapsed: 0, arenaW: ARENA_W, groundY: GROUND_Y, playerSize: PLAYER_SIZE,
+    rng: seqRng([0.2, 0.5, 0.99, 0, 0.5]), // dir, margin, lob=no, apex=min, cross=mid
+  });
   check(
     `${name}: apex >= ${e.minApexRatio} hero-heights`,
-    worstApex / PLAYER_SIZE >= e.minApexRatio,
-    `worst ${(worstApex / PLAYER_SIZE).toFixed(2)}x`
+    !lowest.lob && Math.min(worstApex, lowest.apex) / PLAYER_SIZE >= e.minApexRatio,
+    `lowest ${(lowest.apex / PLAYER_SIZE).toFixed(2)}x`
+  );
+  check(
+    `${name}: lobs still land inside the arena (>= ${params.lobMinBounces} bounce)`,
+    worstLobBounces >= params.lobMinBounces - 1e-6,
+    `worst ${worstLobBounces === Infinity ? 'n/a' : worstLobBounces.toFixed(2)}`
+  );
+  // Corner probe: force a lob roll AND the top of the lob band.
+  const tall = planLaunch({
+    params, radius: 26, elapsed: 0, arenaW: ARENA_W, groundY: GROUND_Y, playerSize: PLAYER_SIZE,
+    rng: seqRng([0.2, 0.5, 0, 1, 0.5]), // dir, margin, lob=yes, apex=max, cross=mid
+  });
+  const tallBounces = ARENA_W / Math.abs(tall.vx) / bouncePeriod(tall.apex, GRAVITY);
+  check(
+    `${name}: a maximum lob clears the top of the screen`,
+    tall.lob && tall.apex > SCREEN_TOP,
+    `apex ${tall.apex.toFixed(0)} vs screen top ${SCREEN_TOP}`
+  );
+  check(
+    `${name}: even a maximum lob lands inside the arena`,
+    tallBounces >= params.lobMinBounces - 1e-6,
+    `${tallBounces.toFixed(2)} bounces, crossing in ${tall.crossTime.toFixed(1)}s`
   );
   check(`${name}: apex floor + off-screen launch respected`, apexOk);
+}
+
+console.log('\nballistics — lobs are occasional, not the norm');
+{
+  const params = { ...ADVANCED, ...PRESETS.medium };
+  let lobs = 0;
+  const N = 20000;
+  for (let i = 0; i < N; i++) {
+    const plan = planLaunch({
+      params, radius: 26, elapsed: 0, arenaW: ARENA_W, groundY: GROUND_Y, playerSize: PLAYER_SIZE,
+    });
+    if (plan.lob) lobs++;
+  }
+  const rate = lobs / N;
+  check(
+    'lob rate tracks lobChance',
+    Math.abs(rate - params.lobChance) < 0.02,
+    `${(rate * 100).toFixed(1)}% vs ${(params.lobChance * 100).toFixed(0)}%`
+  );
 }
 
 console.log('\nballistics — ramps taper, never step');

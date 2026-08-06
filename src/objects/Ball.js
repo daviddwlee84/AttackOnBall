@@ -13,7 +13,8 @@ import { Sfx } from '../audio.js';
 //
 // Each ball owns two ground graphics, both driven from tick() each frame:
 //   shadow  a squashed ellipse under the ball, sized by its height (sells the bounce)
-//   marker  a ring at the spot where it will next land (optional, `landingMarker`)
+//   marker  where it will next land — off / a second shadow / a ring
+//           (`landingMarkerMode`)
 export default class Ball extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, sizeIdx, colorIdx, plan) {
     super(scene, plan.x, plan.y, `ball-${sizeIdx}-${colorIdx}`);
@@ -32,9 +33,18 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
       .ellipse(plan.x, GROUND_Y + 2, this.radius * 2, this.radius * 0.55, 0x000000, 0.22)
       .setDepth(-1);
 
-    // Predicted landing spot. Stroked in the ball's own colour so you can tell
-    // which incoming ball a marker belongs to. Sits under both shadows.
-    if (scene.params.landingMarker) {
+    // Predicted landing spot, in one of two styles (see updateMarker):
+    //   shadow  the same squashed ellipse this ball already casts, so the cue
+    //           reads as the shadow sliding into place rather than as UI
+    //   ring    a stroked outline in the ball's own colour — louder, and tells
+    //           you which incoming ball the marker belongs to
+    this.markerMode = scene.params.landingMarkerMode;
+    if (this.markerMode === 'shadow') {
+      this.marker = scene.add
+        .ellipse(plan.x, GROUND_Y + 2, this.radius * 2, this.radius * 0.55, 0x000000, 0.22)
+        .setDepth(-2)
+        .setVisible(false);
+    } else if (this.markerMode === 'ring') {
       const tint = Phaser.Display.Color.HexStringToColor(BALL_COLORS[colorIdx]).color;
       this.marker = scene.add
         .circle(plan.x, GROUND_Y + 2, this.radius * 0.9)
@@ -78,8 +88,8 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     this.wasOnFloor = onFloor;
   }
 
-  // Ring on the ground where this ball's underside will next touch down.
-  // Fades in as the landing approaches so imminent threats read loudest.
+  // Mark the ground where this ball's underside will next touch down, growing
+  // more insistent as the landing approaches.
   updateMarker(height) {
     const g = this.scene.params.gravity;
     const t = timeToFloor(height, this.body.velocity.y, g);
@@ -91,7 +101,19 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite {
     }
     this.marker.setVisible(true);
     this.marker.x = x;
-    this.marker.setAlpha(Phaser.Math.Clamp(1 - t / 1.1, 0.15, 0.9));
+    const k = Phaser.Math.Clamp(1 - t / 1.1, 0, 1); // 0 far off … 1 about to land
+
+    if (this.markerMode === 'shadow') {
+      // Deliberately converges on this ball's *own* shadow values (scale 1,
+      // alpha 0.22 at touchdown, and the ellipse is already sized from the
+      // radius) so the two become indistinguishable at the moment of impact —
+      // the cue is the shadow arriving early, not a separate widget.
+      const s = 0.5 + 0.5 * k;
+      this.marker.setScale(s, s);
+      this.marker.setAlpha(0.04 + 0.18 * k);
+    } else {
+      this.marker.setAlpha(Phaser.Math.Clamp(0.15 + 0.75 * k, 0.15, 0.9));
+    }
   }
 
   // Squash on impact, then spring back; ask the scene to puff dust.

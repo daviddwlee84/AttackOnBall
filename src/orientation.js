@@ -42,23 +42,27 @@ function publishViewportVars() {
   s.setProperty('--aob-vh', `${window.innerHeight}px`);
 }
 
-// Inverse of the CSS rotation, about the top-left corner.
+// Inverse of the CSS rotation, which is applied about the element's centre.
 //
-// The canvas's on-screen box R is the rotated one, so R.width is the canvas's
-// own (unrotated) CSS *height* and R.height its CSS *width*. Undo the rotation
-// to get unrotated element coordinates, then scale into game space.
+// The canvas's on-screen box R is the rotated one, so its axes are swapped
+// relative to the canvas's own CSS size: unrotated width = R.height, unrotated
+// height = R.width. Working from the centre outward:
 //
-//   cw  — `rotate(90deg) translateY(-100%)`:  ex = sy,            ey = R.width - sx
-//   ccw — `rotate(-90deg) translateX(-100%)`: ex = R.height - sy, ey = sx
+//   cw  (+90°, screen-space y-down): element offset (x, y) -> screen (-y, x)
+//                                    so undo with  x = dy,  y = -dx
+//   ccw (-90°):                      element offset (x, y) -> screen (y, -x)
+//                                    so undo with  x = -dy, y = dx
 function mapRotatedPointer(scale, pageX, pageY) {
   const r = scale.canvas.getBoundingClientRect();
-  const sx = pageX - window.scrollX - r.left;
-  const sy = pageY - window.scrollY - r.top;
-  const ex = clockwise ? sy : r.height - sy;
-  const ey = clockwise ? r.width - sx : sx;
+  const w = r.height; // canvas CSS width, unrotated
+  const h = r.width; // canvas CSS height, unrotated
+  const dx = pageX - window.scrollX - (r.left + r.width / 2);
+  const dy = pageY - window.scrollY - (r.top + r.height / 2);
+  const ex = w / 2 + (clockwise ? dy : -dy);
+  const ey = h / 2 + (clockwise ? -dx : dx);
   return {
-    x: ex * (scale.baseSize.width / r.height),
-    y: ey * (scale.baseSize.height / r.width),
+    x: ex * (scale.baseSize.width / w),
+    y: ey * (scale.baseSize.height / h),
   };
 }
 
@@ -187,4 +191,14 @@ export async function ensureLandscape() {
   // 3. Ask nicely.
   document.body.classList.add('aob-needs-rotate');
   return 'prompt';
+}
+
+// Drop the software rotation so the menu is read in the device's real
+// orientation — the settings panel is an HTML form, and filling it in upright
+// is nicer than tilting your head. A real orientation lock is left alone:
+// unlocking it here would spin the whole device back and forth on every
+// menu/game transition.
+export function releaseLandscape() {
+  setRotated(false);
+  document.body.classList.remove('aob-needs-rotate');
 }
