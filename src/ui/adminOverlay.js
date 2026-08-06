@@ -112,7 +112,8 @@ export default class AdminOverlay {
         `  keys L/R      ${keyLeft ? 'DOWN' : '·'} / ${keyRight ? 'DOWN' : '·'}`,
         `  opposing      ${socd}`,
         `  pointer       ${pointer.isDown ? 'down' : 'up'} @ ${pointer.worldX.toFixed(0)},${pointer.worldY.toFixed(0)}`,
-        `  armed/uiHold  ${s.pointerArmed ? 'armed' : 'BLOCKED'} / ${s.uiHold ? 'HELD' : '·'}`,
+        `  fingers down  ${s.input.manager.pointers.filter((q) => q.isDown).length}` +
+          `  ignored ${s.ignoredPointers.size} (HUD / held from last screen)`,
         '',
         `HERO    x ${s.player.x.toFixed(0)}  vx ${s.player.body.velocity.x.toFixed(0)}  speed ${p.playerSpeed.toFixed(0)}`,
         `  bounds        ${s.playerMinX?.toFixed(0)} .. ${s.playerMaxX?.toFixed(0)}`,

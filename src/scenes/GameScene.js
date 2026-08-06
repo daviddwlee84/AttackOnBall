@@ -43,6 +43,13 @@ export default class GameScene extends Phaser.Scene {
   // possible to leave it on by accident and quietly rank a run made with it.
   init(data) {
     this.admin = !!(data && data.admin);
+    // Phaser reuses the Scene *instance* across restarts — only its display
+    // list and systems are rebuilt — so anything assigned conditionally in
+    // create() survives into the next run. Leaving adminView set meant a normal
+    // run after a debug one kept calling update() on an overlay whose objects
+    // the previous shutdown had already destroyed; that threw every frame and
+    // killed the update loop, freezing the game.
+    this.adminView = null;
   }
 
   create() {
@@ -121,19 +128,25 @@ export default class GameScene extends Phaser.Scene {
     this.leftKeys = [this.cursors.left, this.keyA];
     this.rightKeys = [this.cursors.right, this.keyD];
 
-    // If the scene started while a finger/button was still down (tapping
-    // "Play Again" / "Restart"), that held pointer would otherwise be read as a
-    // move command and jerk the fresh hero toward the button. Ignore the pointer
-    // until it has been released once.
     this._worldPt = new Phaser.Math.Vector2();
-    this.pointerArmed = !this.heldPointer();
-    // Set while a press started on one of the HUD buttons, so dragging off it
-    // doesn't turn into a move command. Replaces the old blanket "ignore the
-    // top-right corner" rectangle, which was a real invisible wall.
-    this.uiHold = false;
-    this.input.on('pointerup', () => {
-      this.uiHold = false;
-    });
+
+    // Pointers that must not be read as a move command, tracked individually
+    // rather than as one global flag. Two things go in here:
+    //
+    //   * fingers already down when the scene started — the one still resting
+    //     on "Play Again" would otherwise jerk the fresh hero toward the button
+    //   * fingers that pressed a HUD button (pause / mute)
+    //
+    // Both used to be global flags. That was wrong once more than one finger
+    // could be tracked: "wait for all pointers up" may never come true if you
+    // play with two thumbs and always have one down, which would leave touch
+    // control dead for the whole run; and a thumb resting on the mute button
+    // froze the hero even while the other thumb was steering.
+    this.ignoredPointers = new Set();
+    for (const p of this.input.manager.pointers) {
+      if (p.isDown) this.ignoredPointers.add(p.id);
+    }
+    this.input.on('pointerup', (p) => this.ignoredPointers.delete(p.id));
 
     // Pause: Esc / P keys, or the corner button.
     this.input.keyboard.on('keydown-ESC', this.pauseGame, this);
@@ -170,7 +183,10 @@ export default class GameScene extends Phaser.Scene {
       this.adminView = new AdminOverlay(this);
       this.debug.setVisible(true);
       this.safetyView.setVisible(true);
-      this.events.once('shutdown', () => this.adminView.destroy());
+      this.events.once('shutdown', () => {
+        if (this.adminView) this.adminView.destroy();
+        this.adminView = null;
+      });
     }
 
     // Test hook (used by scripts/smoke-test.mjs) — harmless in normal play.
@@ -196,11 +212,6 @@ export default class GameScene extends Phaser.Scene {
     if (rt >= 0) return 1;
 
     const held = this.heldPointer();
-    if (!this.pointerArmed) {
-      if (!held) this.pointerArmed = true;
-      return 0;
-    }
-    if (this.uiHold) return 0;
     if (held) {
       // Resolve the world point here rather than reading pointer.worldX, which
       // Phaser only refreshes while hit-testing — for a finger that is held
@@ -225,7 +236,12 @@ export default class GameScene extends Phaser.Scene {
   heldPointer() {
     let best = null;
     for (const p of this.input.manager.pointers) {
-      if (p.isDown && (!best || p.downTime > best.downTime)) best = p;
+      if (!p.isDown) {
+        this.ignoredPointers.delete(p.id); // released — usable again next press
+        continue;
+      }
+      if (this.ignoredPointers.has(p.id)) continue;
+      if (!best || p.downTime > best.downTime) best = p;
     }
     return best;
   }
@@ -242,8 +258,8 @@ export default class GameScene extends Phaser.Scene {
     // Make the background rectangle interactive (container-level hitAreas don't
     // hit-test reliably in Phaser).
     bg.setInteractive({ useHandCursor: true });
-    bg.on('pointerdown', () => {
-      this.uiHold = true;
+    bg.on('pointerdown', (pointer) => {
+      this.ignoredPointers.add(pointer.id); // this finger drives the button, not the hero
       this.pauseGame();
     });
   }
@@ -257,8 +273,8 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.muteBtn = this.add.container(0, 0, [bg, icon]).setDepth(80);
     bg.setInteractive({ useHandCursor: true });
-    bg.on('pointerdown', () => {
-      this.uiHold = true;
+    bg.on('pointerdown', (pointer) => {
+      this.ignoredPointers.add(pointer.id); // this finger drives the button, not the hero
       const muted = toggleMuted();
       icon.setText(muted ? '🔇' : '🔊');
       if (muted) {
