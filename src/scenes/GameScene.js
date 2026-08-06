@@ -21,12 +21,20 @@ import { gameParams, setSettings } from '../settings.js';
 import { Sfx, isMuted, toggleMuted, startMusic, stopMusic } from '../audio.js';
 import DebugOverlay from '../ui/debugOverlay.js';
 import SafetyOverlay from '../ui/safetyOverlay.js';
+import AdminOverlay from '../ui/adminOverlay.js';
 
 // The core gameplay loop: move the hero, dodge the bouncing balls, grab numbers,
 // and survive. Score climbs with time; every 10 points the arena recolors.
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
+  }
+
+  // `admin` starts the run in the zoomed-out inspection mode (ui/adminOverlay).
+  // Deliberately scene data rather than a persisted setting: it must not be
+  // possible to leave it on by accident and quietly rank a run made with it.
+  init(data) {
+    this.admin = !!(data && data.admin);
   }
 
   create() {
@@ -146,6 +154,14 @@ export default class GameScene extends Phaser.Scene {
     this.safetyView = new SafetyOverlay(this);
     this.input.keyboard.on('keydown-F4', () => this.safetyView.setVisible(!this.safetyView.visible));
 
+    // Admin mode turns every diagnostic on at once.
+    if (this.admin) {
+      this.adminView = new AdminOverlay(this);
+      this.debug.setVisible(true);
+      this.safetyView.setVisible(true);
+      this.events.once('shutdown', () => this.adminView.destroy());
+    }
+
     // Test hook (used by scripts/smoke-test.mjs) — harmless in normal play.
     if (typeof window !== 'undefined') window.__aob = this;
   }
@@ -235,6 +251,7 @@ export default class GameScene extends Phaser.Scene {
     if (this.debug.visible) this.debug.update();
     if (this.over) return;
     if (this.safetyView.visible) this.safetyView.update(dtMs);
+    if (this.adminView) this.adminView.update(dtMs);
     const dt = dtMs / 1000;
     this.elapsed += dt;
 
@@ -475,6 +492,7 @@ export default class GameScene extends Phaser.Scene {
         // The difficulty this run was actually played at — settings could be
         // changed before the game-over screen is dismissed.
         difficulty: this.params.difficulty,
+        admin: this.admin,
       });
     });
   }

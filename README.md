@@ -32,6 +32,13 @@ nowhere to run is re-rolled (see **Always dodgeable** below).
 - Desktop: `←` / `→` or `A` / `D`
 - Touch: tap or hold anywhere — the hero walks toward your finger
 - `Esc` / `P` pause · `F3` FPS overlay · `F4` dodgeability corridor
+- **🔧 Debug play** (bottom of Advanced settings) starts an unranked run zoomed
+  out past the arena edge, with a red frame marking the normally-visible area,
+  Arcade Physics hitboxes drawn, and a live readout of input state, hero bounds,
+  spawn timing and every ball's launch parameters. Useful for debugging a
+  reported control problem — you can see directly whether the hero is being told
+  to go left or right, and by which input path — and for showing how the thing
+  actually works.
 
 **Settings (start screen)** — pick a difficulty preset (Easy / Medium / Hard / Crazy),
 browse the **🏆 Top 10** board for that exact difficulty and mode, or open

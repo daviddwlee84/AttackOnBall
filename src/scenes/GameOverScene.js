@@ -32,6 +32,7 @@ export default class GameOverScene extends Phaser.Scene {
     this.score = data.score || 0;
     this.mode = data.mode || 'classic';
     this.difficulty = data.difficulty || getSettings().difficulty;
+    this.admin = !!data.admin;
     this.rank = 0;
   }
 
@@ -39,9 +40,11 @@ export default class GameOverScene extends Phaser.Scene {
     // The run is over — a pending update can be offered without costing anything.
     setUpdatePromptVisible(true);
 
-    const best = Math.max(this.score, readBest(this.mode));
-    localStorage.setItem(bestKey(this.mode), String(best));
-    const isNewBest = this.score >= best && this.score > 0;
+    // Admin runs are played zoomed out with every hitbox on show — a real
+    // advantage — so they touch neither the best score nor the leaderboard.
+    const best = this.admin ? readBest(this.mode) : Math.max(this.score, readBest(this.mode));
+    if (!this.admin) localStorage.setItem(bestKey(this.mode), String(best));
+    const isNewBest = !this.admin && this.score >= best && this.score > 0;
     this.bucket = leaderboard.bucketOf(this.mode, this.difficulty);
 
     // MAX_GAME_W so a resize while this overlay is up can't reveal a gap.
@@ -109,6 +112,7 @@ export default class GameOverScene extends Phaser.Scene {
   // Offer a name only when the run actually placed. The prompt is HTML, so it
   // sits above the canvas and the scene keeps running underneath.
   maybeRecordScore() {
+    if (this.admin) return; // unranked by design
     if (!leaderboard.qualifies(this.bucket, this.score)) return;
     const provisional = leaderboard.top(this.bucket).filter((e) => e.score >= this.score).length + 1;
     askName({ defaultName: getSettings().playerName, rank: provisional, score: this.score }).then((name) => {
@@ -120,6 +124,12 @@ export default class GameOverScene extends Phaser.Scene {
   }
 
   renderBoard() {
+    if (this.admin) {
+      this.rankText.setColor('#ff9f43').setText('🔧 Debug run — not ranked');
+      this.boardTitle.setText('');
+      this.boardRows.forEach((t) => t.setText(''));
+      return;
+    }
     const rows = leaderboard.top(this.bucket, 3);
     this.rankText.setText(this.rank ? `Leaderboard rank #${this.rank}` : '');
     this.boardTitle.setText(rows.length ? `🏆 ${this.difficulty} · ${this.mode}` : '');
@@ -136,7 +146,7 @@ export default class GameOverScene extends Phaser.Scene {
     closeNameEntry();
     this.scene.stop('GameScene');
     this.scene.stop();
-    this.scene.start('GameScene');
+    this.scene.start('GameScene', { admin: this.admin }); // stay in debug mode
   }
 
   toMenu() {

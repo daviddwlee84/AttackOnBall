@@ -40,7 +40,7 @@ export default class MenuScene extends Phaser.Scene {
     });
 
     openSettings({
-      onPlay: async () => {
+      onPlay: async (opts) => {
         unlockAudio(); // first user gesture — enable the AudioContext
         Sfx.ui();
         closeSettings();
@@ -48,7 +48,7 @@ export default class MenuScene extends Phaser.Scene {
         // Awaited so GameScene is built against the final arena size — starting
         // first would create the hero and HUD at the pre-rotation width.
         await ensureLandscape();
-        this.scene.start('GameScene');
+        this.scene.start('GameScene', { admin: !!(opts && opts.admin) });
       },
     });
 

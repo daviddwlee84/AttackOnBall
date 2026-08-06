@@ -251,6 +251,47 @@ const baseCfg = {
   );
 }
 
+console.log('\nsafety — height and trajectory, not just the floor axis');
+{
+  // Four resting balls leave exactly one standing spot, centred on x=500:
+  //   blocked [0,200] u [160,440] u [560,840] u [800,960]  ->  free (440, 560)
+  const onFloor = (x, r) => ({ x, y: GROUND_Y - r, vx: 0, vy: 0, r });
+  const pen = [onFloor(60, 120), onFloor(300, 120), onFloor(700, 120), onFloor(940, 120)];
+  const cfg = { ...baseCfg, bounce: 0, playerX: 500, balls: pen };
+
+  const standing = analyseSurvivability(cfg);
+  check('the one floor gap is survivable on its own', standing.survivable);
+
+  // Now drop a ball straight into that gap from above the screen. Along the
+  // floor axis nothing changed — the gap is still there — but the hero cannot
+  // be standing in it when the ball arrives. This is the case that a model
+  // projecting everything onto the floor would get wrong.
+  const incoming = { x: 500, y: GROUND_Y - 500, vx: 0, vy: 0, r: 80 };
+  const closing = analyseSurvivability({ ...cfg, balls: [...pen, incoming] });
+  check(
+    'a ball descending into that gap makes it unsurvivable',
+    !closing.survivable,
+    `tDeath=${closing.tDeath.toFixed(2)}s`
+  );
+  // And it must fail when the ball ARRIVES, not immediately — proof the model
+  // is tracking it through time rather than flattening it onto the ground.
+  const arrival = Math.sqrt((2 * (500 - (GROUND_Y - baseCfg.playerTop))) / GRAVITY);
+  check(
+    'and it fails on arrival, not at t=0',
+    closing.tDeath > arrival * 0.8 && closing.tDeath < arrival * 1.4,
+    `tDeath=${closing.tDeath.toFixed(2)}s vs free-fall arrival ~${arrival.toFixed(2)}s`
+  );
+
+  // Same ball, but sailing over the hero's head instead of into the gap: the
+  // hero's height is what decides, so this must stay survivable.
+  const overhead = analyseSurvivability({
+    ...cfg,
+    horizon: 0.5,
+    balls: [...pen, { x: 500, y: GROUND_Y - 500, vx: 0, vy: -400, r: 80 }],
+  });
+  check('the same ball still rising overhead does not block', overhead.survivable);
+}
+
 console.log('\nsafety — cost');
 {
   const balls = Array.from({ length: 18 }, (_, i) => ({

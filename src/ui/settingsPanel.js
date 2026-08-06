@@ -314,6 +314,19 @@ function buildOnce() {
     refresh();
   });
   advSection.appendChild(reset);
+
+  // Its own launcher rather than a toggle: the mode is a property of a single
+  // run, not a saved preference, so it can't be left on by mistake and quietly
+  // rank a run played with every hitbox visible.
+  const debugPlay = el('button', 'aob-debug-play', '🔧 Debug play (unranked)');
+  debugPlay.addEventListener('click', () => {
+    closeSettings();
+    if (onPlayCb) onPlayCb({ admin: true });
+  });
+  advSection.appendChild(debugPlay);
+  advSection.appendChild(
+    el('div', 'aob-debug-note', 'Zooms out past the arena edge and draws hitboxes, spawn margins, live input and each ball’s launch numbers.')
+  );
   panel.appendChild(advToggle);
   panel.appendChild(advSection);
 
@@ -390,6 +403,10 @@ function injectStyle() {
   .aob-board-score{font-weight:bold;}
   .aob-board-empty{opacity:.6;text-align:center;padding:8px 0;}
   .aob-reset{width:100%;padding:8px;margin-top:10px;font-size:13px;background:#ffe9ec;}
+  .aob-debug-play{font-family:inherit;cursor:pointer;border:3px dashed #2b2b2b;border-radius:12px;
+    width:100%;padding:10px;margin-top:12px;font-size:14px;font-weight:bold;background:#2b2b2b;color:#9bffba;}
+  .aob-debug-play:active{transform:translateY(2px);}
+  .aob-debug-note{font-size:12px;opacity:.6;margin-top:6px;line-height:1.35;}
   .aob-play{width:100%;padding:15px;margin-top:16px;font-size:21px;background:#4dabf7;color:#08334d;}
   .aob-play:hover{filter:brightness(1.05);} .aob-play:active{transform:translateY(2px);}
   `;
