@@ -23,8 +23,12 @@ dev-dist/
 *.pem
 
 # tooling artifacts
-.claude/
-.specstory/
+# Agent chat transcripts (.specstory/) and plan files (.claude/plans/) are
+# committed alongside the diff they produced — they're the review trail for how
+# a change was arrived at. Everything else under .claude/ is local machine state
+# (settings.local.json, caches) and stays out.
+.claude/*
+!.claude/plans/
 
 # debug
 npm-debug.log*
