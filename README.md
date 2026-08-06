@@ -29,7 +29,10 @@ nowhere to run is re-rolled (see **Always dodgeable** below).
 
 **Controls**
 
-- Desktop: `←` / `→` or `A` / `D`
+- Desktop: `←` / `→` or `A` / `D`. Pressing the opposite direction takes effect
+  immediately even if you haven't released the first one yet, and letting it go
+  hands control straight back — so a fast left-right-left shuffle never drops an
+  input (last-press-wins, the rule Razer ships as Snap Tap)
 - Touch: tap or hold anywhere — the hero walks toward your finger
 - `Esc` / `P` pause · `F3` FPS overlay · `F4` dodgeability corridor
 - **🔧 Debug play** (bottom of Advanced settings) starts an unranked run zoomed

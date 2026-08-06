@@ -23,6 +23,14 @@ import DebugOverlay from '../ui/debugOverlay.js';
 import SafetyOverlay from '../ui/safetyOverlay.js';
 import AdminOverlay from '../ui/adminOverlay.js';
 
+// Timestamp of the most recent press among the keys still held on one side, or
+// -1 if none of them are down. Used to resolve left-vs-right (see readDirection).
+function newestPress(keys) {
+  let t = -1;
+  for (const k of keys) if (k.isDown && k.timeDown > t) t = k.timeDown;
+  return t;
+}
+
 // The core gameplay loop: move the hero, dodge the bouncing balls, grab numbers,
 // and survive. Score climbs with time; every 10 points the arena recolors.
 export default class GameScene extends Phaser.Scene {
@@ -110,6 +118,8 @@ export default class GameScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keyA = this.input.keyboard.addKey('A');
     this.keyD = this.input.keyboard.addKey('D');
+    this.leftKeys = [this.cursors.left, this.keyA];
+    this.rightKeys = [this.cursors.right, this.keyD];
 
     // If the scene started while a finger/button was still down (tapping
     // "Play Again" / "Restart"), that held pointer would otherwise be read as a
@@ -167,8 +177,23 @@ export default class GameScene extends Phaser.Scene {
   }
 
   readDirection() {
-    if (this.cursors.left.isDown || this.keyA.isDown) return -1;
-    if (this.cursors.right.isDown || this.keyD.isDown) return 1;
+    // Opposing keys resolve to the most RECENT press (Razer calls this Snap
+    // Tap; it's the "last input priority" SOCD rule). The old code returned
+    // left whenever left was down, so pressing right while still holding left
+    // did nothing at all — you had to fully release first, which reads as the
+    // key not registering when it's really two directions cancelling.
+    //
+    // Releasing the newer key hands control straight back to the one still
+    // held, so a quick left-right-left shuffle never drops an input.
+    //
+    // (True analog Rapid Trigger — re-actuating on partial release — isn't
+    // possible here: a browser only ever reports a key as down or up.)
+    const lt = newestPress(this.leftKeys);
+    const rt = newestPress(this.rightKeys);
+    if (lt >= 0 && rt >= 0) return lt > rt ? -1 : 1;
+    if (lt >= 0) return -1;
+    if (rt >= 0) return 1;
+
     if (!this.pointerArmed) {
       if (!this.input.activePointer.isDown) this.pointerArmed = true;
       return 0;

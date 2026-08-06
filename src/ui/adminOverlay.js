@@ -93,12 +93,24 @@ export default class AdminOverlay {
     const keyLeft = s.cursors.left.isDown || s.keyA.isDown;
     const keyRight = s.cursors.right.isDown || s.keyD.isDown;
     const src = keyLeft || keyRight ? 'keyboard' : pointer.isDown ? 'pointer' : 'none';
+    // Both directions held at once is the interesting case — show which press
+    // won and by how much, so "the key didn't register" can be told apart from
+    // "the opposite key was still down".
+    const socd = keyLeft && keyRight
+      ? `BOTH held -> newest wins (${(
+          Math.abs(
+            Math.max(s.cursors.left.timeDown, s.keyA.isDown ? s.keyA.timeDown : -Infinity) -
+              Math.max(s.cursors.right.timeDown, s.keyD.isDown ? s.keyD.timeDown : -Infinity)
+          ) / 1000
+        ).toFixed(2)}s apart)`
+      : '·';
 
     this.text.setPosition(14 * SCALE, 190 * SCALE); // clears the FPS graph above it
     this.text.setText(
       [
         `INPUT   ${arrow}   via ${src}`,
         `  keys L/R      ${keyLeft ? 'DOWN' : '·'} / ${keyRight ? 'DOWN' : '·'}`,
+        `  opposing      ${socd}`,
         `  pointer       ${pointer.isDown ? 'down' : 'up'} @ ${pointer.worldX.toFixed(0)},${pointer.worldY.toFixed(0)}`,
         `  armed/uiHold  ${s.pointerArmed ? 'armed' : 'BLOCKED'} / ${s.uiHold ? 'HELD' : '·'}`,
         '',
