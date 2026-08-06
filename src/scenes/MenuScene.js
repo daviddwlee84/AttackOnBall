@@ -3,6 +3,7 @@ import { GAME_W, GAME_H, GROUND_Y, GROUND_H, PALETTES, SCALE } from '../config.j
 import { openSettings, closeSettings } from '../ui/settingsPanel.js';
 import { onArenaResize } from '../systems/viewport.js';
 import { ensureLandscape } from '../orientation.js';
+import { setUpdatePromptVisible } from '../pwa-update.js';
 import { Sfx, unlockAudio } from '../audio.js';
 
 // Animated backdrop behind the HTML settings panel. The panel (presets +
@@ -19,6 +20,9 @@ export default class MenuScene extends Phaser.Scene {
       loader.classList.add('aob-fade');
       setTimeout(() => loader.remove(), 400);
     }
+
+    // Safe moment to offer a pending app update — nothing is at stake here.
+    setUpdatePromptVisible(true);
 
     const p = PALETTES[0];
     this.add.rectangle(0, 0, GAME_W, GAME_H, p.bg).setOrigin(0);

@@ -16,6 +16,7 @@ import Player from '../objects/Player.js';
 import Arena from '../systems/arena.js';
 import Spawner from '../systems/spawner.js';
 import { onArenaResize, safeInsets } from '../systems/viewport.js';
+import { setUpdatePromptVisible } from '../pwa-update.js';
 import { gameParams, setSettings } from '../settings.js';
 import { Sfx, isMuted, toggleMuted, startMusic, stopMusic } from '../audio.js';
 import DebugOverlay from '../ui/debugOverlay.js';
@@ -29,6 +30,10 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // A run is live: never interrupt it with the "new version" prompt. The
+    // score IS the elapsed time, so a reload here costs the player everything.
+    setUpdatePromptVisible(false);
+
     // Snapshot the active settings (SCALE-applied) for this run. Read before any
     // entity is created — Player/Ball/Spawner all read scene.params.
     this.params = gameParams();

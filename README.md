@@ -73,6 +73,15 @@ npm run smoke     # headless boot/play check against the preview server
 - `src/orientation.js` — landscape by default: fullscreen + orientation lock, and a
   CSS page-rotation fallback with matching patches to Phaser's pointer mapping and
   parent measurement.
+- `src/pwa-update.js` — service-worker update lifecycle. The plugin default
+  (`registerType: 'autoUpdate'` with no `virtual:pwa-register` import) never
+  re-checks for a deploy once the page is loaded, and swaps the worker without
+  reloading — so an open tab or a resumed PWA serves a stale build indefinitely
+  and the player is never told. Instead this registers in `prompt` mode, calls
+  `registration.update()` on every `focus` / `visibilitychange`, and surfaces a
+  "new version" toast **only on the menu and game-over screens** — `GameScene`
+  suppresses it, because the score is the elapsed time and a reload mid-run would
+  destroy it. Nothing activates until the player taps Update.
 - `src/ui/settingsPanel.js` — the HTML settings overlay on the menu screen;
   `src/ui/nameEntry.js` — the leaderboard name prompt.
 - `src/doodle.js` — rough.js texture generators (hero expressions, balls, numbers,
@@ -102,5 +111,6 @@ for reference; the tuned physics constants were ported from it.
 
 Already live (see link above). `.github/workflows/deploy.yml` builds with the
 `/AttackOnBall/` base path (`GITHUB_PAGES=true`) and deploys `dist/` via GitHub
-Actions on every push to `main`. Pages is configured with **Source: GitHub Actions**.
+Actions on every push to `main`. Players already running the app pick the new
+build up the next time they focus the tab — see `src/pwa-update.js`. Pages is configured with **Source: GitHub Actions**.
 If you fork/rename, update `base` in `vite.config.js` to match the new repo name.

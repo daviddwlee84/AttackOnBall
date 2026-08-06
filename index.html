@@ -188,6 +188,52 @@
         padding: 7px 10px;
       }
 
+      /* "New version" toast (toggled by src/pwa-update.js). Sits at the top and
+         above the settings panel (z-index 10) and name prompt (40), because it
+         is only ever shown on the menu / game-over screens — never mid-run. */
+      #aob-update {
+        display: none;
+        position: fixed;
+        left: 50%;
+        top: 12px;
+        transform: translateX(-50%);
+        z-index: 50;
+        max-width: 92vw;
+        padding: 10px 14px;
+        align-items: center;
+        gap: 12px;
+        background: #fdf6e3;
+        color: #2b2b2b;
+        border: 3px solid #2b2b2b;
+        border-radius: 12px;
+        box-shadow: 0 4px 0 rgba(43, 43, 43, 0.3);
+        font-size: 15px;
+      }
+      #aob-update.aob-show {
+        display: flex;
+      }
+      #aob-update .text {
+        flex: 1;
+        line-height: 1.35;
+        font-weight: bold;
+      }
+      #aob-update button {
+        font-family: inherit;
+        font-weight: bold;
+        cursor: pointer;
+        border-radius: 8px;
+        border: 2px solid #2b2b2b;
+        padding: 7px 12px;
+      }
+      #aob-update .update-btn {
+        background: #7ed957;
+        color: #14310a;
+      }
+      #aob-update .later-btn {
+        background: transparent;
+        padding: 7px 10px;
+      }
+
       /* Loading screen shown immediately while the bundle downloads and the
          doodle textures are generated; removed once the menu is ready. */
       #aob-loading {
@@ -239,6 +285,11 @@
     <div id="aob-rotate" aria-hidden="true">
       <div class="phone"></div>
       <div class="label">Rotate your device<br />to landscape&nbsp;↺</div>
+    </div>
+    <div id="aob-update" role="dialog" aria-label="Update available">
+      <span class="text">🔄 New version available</span>
+      <button type="button" class="update-btn">Update</button>
+      <button type="button" class="later-btn" aria-label="Later">Later</button>
     </div>
     <div id="aob-install" role="dialog" aria-label="Install Attack on Ball">
       <span class="text"></span>

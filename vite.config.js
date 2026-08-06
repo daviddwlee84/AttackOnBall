@@ -9,7 +9,15 @@ export default defineConfig({
   base,
   plugins: [
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt', not 'autoUpdate': a new worker must WAIT until the player
+      // accepts. autoUpdate emits skipWaiting()+clientsClaim(), which swaps the
+      // worker out from under a live run — and since nothing reloads the page,
+      // the tab then keeps executing the old bundle anyway. src/pwa-update.js
+      // owns the lifecycle and only offers the refresh between runs.
+      registerType: 'prompt',
+      // We register from src/pwa-update.js via `virtual:pwa-register`, so the
+      // plugin must not also inject its own registerSW.js (double registration).
+      injectRegister: null,
       includeAssets: ['icons/icon-192.png', 'icons/icon-512.png', 'og-image.png'],
       manifest: {
         name: 'Attack on Ball',

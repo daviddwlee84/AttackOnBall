@@ -5,6 +5,7 @@ import { askName, closeNameEntry } from '../ui/nameEntry.js';
 import { leaderboard } from '../systems/leaderboard.js';
 import { getSettings, setSettings } from '../settings.js';
 import { onArenaResize } from '../systems/viewport.js';
+import { setUpdatePromptVisible } from '../pwa-update.js';
 
 // Best score is tracked per mode (lives mode is more forgiving, so it would
 // otherwise inflate the classic best). Classic migrates the legacy 'aob-best'.
@@ -34,6 +35,9 @@ export default class GameOverScene extends Phaser.Scene {
   }
 
   create() {
+    // The run is over — a pending update can be offered without costing anything.
+    setUpdatePromptVisible(true);
+
     const best = Math.max(this.score, readBest(this.mode));
     localStorage.setItem(bestKey(this.mode), String(best));
     const isNewBest = this.score >= best && this.score > 0;

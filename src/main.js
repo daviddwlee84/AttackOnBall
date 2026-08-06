@@ -9,8 +9,10 @@ import GameScene from './scenes/GameScene.js';
 import PauseScene from './scenes/PauseScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
 import { initInstallPrompt } from './pwa-install.js';
+import { initPwaUpdate } from './pwa-update.js';
 
 initInstallPrompt();
+initPwaUpdate();
 
 // Ask the browser not to evict our localStorage (best score + settings) under
 // storage pressure. Best-effort — granted based on engagement / install state.
