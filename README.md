@@ -128,5 +128,13 @@ for reference; the tuned physics constants were ported from it.
 Already live (see link above). `.github/workflows/deploy.yml` builds with the
 `/AttackOnBall/` base path (`GITHUB_PAGES=true`) and deploys `dist/` via GitHub
 Actions on every push to `main`. Players already running the app pick the new
-build up the next time they focus the tab — see `src/pwa-update.js`. Pages is configured with **Source: GitHub Actions**.
+build up the next time they focus the tab — see `src/pwa-update.js`.
+
+**If a deploy fails with the build job green:** `actions/deploy-pages` sometimes
+sits at `deployment_queued` until it times out and cancels — a Pages-side
+hiccup, not a code problem. Re-running the failed job *usually* fixes it, but
+not always: the Pages deployment ID **is** the commit SHA, so once a SHA's
+deployment has been cancelled, re-running just re-creates the same already-
+cancelled deployment and fails immediately with `Deployment cancelled.` at that
+point the only way through is a new commit (an empty one is enough). Pages is configured with **Source: GitHub Actions**.
 If you fork/rename, update `base` in `vite.config.js` to match the new repo name.
